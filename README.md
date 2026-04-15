@@ -7,7 +7,7 @@ Jira 命令行工具，支持 Cloudflare Access 认证。
 ## 安装
 
 ```bash
-npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli-1.1.4.tgz
+npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli-1.1.5.tgz
 ```
 
 安装后全局可用 `jira2claw` 和 `j2c` 命令。
@@ -91,6 +91,25 @@ j2c list -j "project = XOS AND status = Open ORDER BY updated DESC"
 
 # 统计数量
 j2c list -p XOS -t Bug --count
+```
+
+### 聚合统计（--stats）
+
+```bash
+# 谁的未关闭 issue 最多 top 3
+j2c list -j "statusCategory != Done" --stats assignee --top 3
+
+# 按项目+经办人分组
+j2c list -j "statusCategory != Done" --stats project,assignee --top 10
+
+# 按项目统计
+j2c list -j "status = Open" --stats project
+
+# CSV 格式输出（方便 AI 解析）
+j2c list -j "statusCategory != Done" --stats project,assignee -e csv
+
+# 全量列表（自动分页）
+j2c list -j "project != XOS AND status = Open" -e csv -m 0
 ```
 
 ### 数据导出
