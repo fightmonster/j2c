@@ -2,10 +2,12 @@
 
 Jira 命令行工具，支持 Cloudflare Access 认证。
 
+> GitHub: https://github.com/fightmonster/j2c
+
 ## 安装
 
 ```bash
-npm install -g jira2claw-cli
+npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli-1.1.4.tgz
 ```
 
 安装后全局可用 `jira2claw` 和 `j2c` 命令。
