@@ -1,0 +1,9 @@
+node_modules/
+cf_cookie.txt
+jira_token.txt
+cli_config.json
+downloads/
+.DS_Store
+.claude/
+*.tgz
+jira_export_*.csv
