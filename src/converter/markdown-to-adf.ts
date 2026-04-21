@@ -83,7 +83,12 @@ export function markdownToWikiMarkup(input: string): string {
   // 13. 处理水平线: --- → ----
   result = result.replace(/^---$/gm, '----');
 
-  // 14. 清理多余空行
+  // 14. 处理表格对齐行: 移除 Markdown 表格对齐语法
+  //     Jira WikiMarkup 表格不支持 |:---:| 对齐语法，需要移除
+  //     匹配类似 |:---:|--------|------| 的行
+  result = result.replace(/^\|[-:|]+\|$/gm, '');
+
+  // 15. 清理多余空行
   result = result.replace(/\n{3,}/g, '\n\n');
 
   return result.trim();
