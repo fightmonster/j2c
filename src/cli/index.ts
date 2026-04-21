@@ -292,7 +292,7 @@ program
   .description(`Jira CLI tool for openclaw skill integration
 
 文档: docs/jira2claw-cli.md`)
-  .version('1.1.5')
+  .version('1.2.0')
   .action(async () => {
     printLogo();
     await showStatus();
