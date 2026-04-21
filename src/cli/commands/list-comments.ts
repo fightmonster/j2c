@@ -5,13 +5,15 @@
 import { Command } from 'commander';
 import Chalk from 'chalk';
 import { createJiraClient } from '../../client/jira-client.js';
+import { renderWikiMarkupTable, hasWikiMarkupTable } from '../../formatter/wikimarkup-table.js';
 
 export const listCommentsCommand = new Command('list-comments')
   .description('列出 Issue 的所有评论')
   .argument('<issueId>', 'Issue ID 或 Key')
   .option('--last', '只显示最后一条评论')
   .option('-o, --output <file>', '输出到文件（方便编辑后通过 edit-comment 写回）')
-  .action(async (issueId: string, options: { last?: boolean; output?: string }) => {
+  .option('--render', '渲染 WikiMarkup 表格为终端表格（默认输出原始文本）')
+  .action(async (issueId: string, options: { last?: boolean; output?: string; render?: boolean }) => {
     try {
       const client = createJiraClient();
       const comments = await client.getComments(issueId);
@@ -41,7 +43,14 @@ export const listCommentsCommand = new Command('list-comments')
           console.log(`  ${Chalk.cyan('Author:')} ${last.author?.displayName || last.author?.name || '-'}`);
           console.log(`  ${Chalk.cyan('Created:')} ${last.created}`);
           console.log(`  ${Chalk.cyan('Body:')}`);
-          body.split('\n').forEach((line: string) => console.log(`    ${line}`));
+          
+          // 如果有 --render 选项且包含表格，渲染表格
+          if (options.render && hasWikiMarkupTable(body)) {
+            const rendered = renderWikiMarkupTable(body);
+            rendered.split('\n').forEach((line: string) => console.log(`    ${line}`));
+          } else {
+            body.split('\n').forEach((line: string) => console.log(`    ${line}`));
+          }
           console.log('');
         }
       } else {
