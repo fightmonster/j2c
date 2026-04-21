@@ -384,10 +384,15 @@ j2c comment <issueId> -m "<content>" [options]
 | `--adf <json>` | ADF JSON 格式 (Atlassian Document Format) |
 | `--attach <filePath>` | 附加文件到评论（自动处理中文文件名） |
 
+**Markdown 表格转换说明：**
+- Markdown 表格对齐行（如 `|:---:|--------|------|`）会自动移除，因为 Jira WikiMarkup 不支持
+- 表格标题行和数据行之间的空行会自动清理，确保 Jira 正确渲染
+
 **示例:**
 ```bash
 j2c comment XOS-731 -m "这是一个评论"
 j2c comment XOS-731 -m "## 分析结果\n\n1. 问题确认" --markdown
+j2c comment XOS-731 -m "| 列1 | 列2 |\n|---|---|\n| a | b |" --markdown  # 表格自动转换
 ```
 
 ---
