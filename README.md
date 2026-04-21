@@ -91,7 +91,15 @@ j2c list -j "project = XOS AND status = Open ORDER BY updated DESC"
 
 # 统计数量
 j2c list -p XOS -t Bug --count
+
+# 自定义字段筛选（注意：严格匹配字段名）
+j2c list -j "project = PNX AND \"SoC Req ID\" is not EMPTY" -e table
 ```
+
+> **💡 AI 使用提示：**
+> - **优先使用 JQL 精确筛选**，而不是先导出 JSON 再分析
+> - **严格匹配字段名**：用户说 "SoC Req ID" 就用 `"SoC Req ID"`，不要猜测
+> - **先用 `j2c fields <issueId>` 确认字段名**，再用 JQL 筛选
 
 ### 聚合统计（--stats）
 

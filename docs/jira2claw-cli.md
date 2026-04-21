@@ -161,6 +161,12 @@ j2c list -j "statusCategory != Done" --stats project,assignee -e csv
 j2c list -j "<jql_query>" [options]
 ```
 
+> **💡 AI 使用提示：**
+> 1. **优先使用 JQL 精确筛选**，而不是先导出 JSON 再分析。`j2c list -j` 已经足够强大。
+> 2. **严格匹配用户指定的字段名**，不要模糊猜测。例如用户说 "SoC Req ID"，就用 `"SoC Req ID"`，不要猜测为 "Req ID"。
+> 3. **先用 `j2c fields <issueId>` 确认字段名**，再用 JQL 筛选。
+> 4. **自定义字段 JQL 语法**：`"字段名" is not EMPTY` 或 `"字段名" = "值"`
+
 **常用字段:**
 
 | 字段 | 说明 | 示例 |
