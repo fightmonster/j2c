@@ -86,9 +86,14 @@ export function markdownToWikiMarkup(input: string): string {
   // 14. 处理表格对齐行: 移除 Markdown 表格对齐语法
   //     Jira WikiMarkup 表格不支持 |:---:| 对齐语法，需要移除
   //     匹配类似 |:---:|--------|------| 的行
+  //     移除后需要清理表格标题行和数据行之间的空行，否则 Jira 渲染会出问题
   result = result.replace(/^\|[-:|]+\|$/gm, '');
 
-  // 15. 清理多余空行
+  // 15. 清理表格区域的多余空行（表格标题行和数据行之间不能有空行）
+  //     匹配: 表格行 + 空行 + 表格行 → 移除中间空行
+  result = result.replace(/^(\|.*\|)\n\n(\|.*\|)$/gm, '$1\n$2');
+
+  // 16. 清理多余空行
   result = result.replace(/\n{3,}/g, '\n\n');
 
   return result.trim();
