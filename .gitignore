@@ -1,9 +1,37 @@
+# Dependencies
 node_modules/
+
+# Build
+dist/
+
+# Config
 cf_cookie.txt
 jira_token.txt
 cli_config.json
+
+# Downloads
 downloads/
+
+# OS
 .DS_Store
+
+# IDE
 .claude/
-*.tgz
+.arts/
+.codeartsdoer/
+
+# Test files
+test-*.mjs
+test-*.py
+jira_auto_demo.py
+
+# Export files
 jira_export_*.csv
+*.csv
+
+# Package files (keep only latest)
+*.tgz
+
+# Temp
+*.tmp
+*.temp
