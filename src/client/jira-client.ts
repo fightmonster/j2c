@@ -337,12 +337,29 @@ export class JiraClient {
 
   // Assignment
   async assignIssue(issueIdOrKey: string, name: string): Promise<void> {
-    await this.withRetry(() =>
-      this.client.issues.assignIssue({
-        issueIdOrKey,
-        accountId: name,
-      })
-    );
+    // Jira Server uses /assignee endpoint
+    // Official API: https://docs.atlassian.com/software/jira/docs/api/REST/9.12.10/#api/2/issue-assign
+    // For Jira Server/DC, use 'name' parameter (username)
+    // Note: Official docs say 'name' is deprecated and should use 'key', but 'name' still works
+    const res = await this.httpRequest({
+      method: 'PUT',
+      path: `/rest/api/2/issue/${encodeURIComponent(issueIdOrKey)}/assignee`,
+      body: JSON.stringify({ name }),
+    });
+    if (res.statusCode !== 204) {
+      let errorMsg = `Assign failed: ${res.statusCode}`;
+      try {
+        const errorDetails = res.body ? JSON.parse(res.body) : {};
+        if (errorDetails.errorMessages) {
+          errorMsg = errorDetails.errorMessages.join(', ');
+        } else if (res.body) {
+          errorMsg += ` ${res.body}`;
+        }
+      } catch {
+        if (res.body) errorMsg += ` ${res.body}`;
+      }
+      throw new Error(errorMsg);
+    }
   }
 
   // Attachments - uses stream for memory safety

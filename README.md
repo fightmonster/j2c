@@ -7,7 +7,7 @@ Jira 命令行工具，支持 Cloudflare Access 认证。
 ## 安装
 
 ```bash
-npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli-1.2.1.tgz
+npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli-1.2.2.tgz
 ```
 
 安装后全局可用 `jira2claw` 和 `j2c` 命令。
@@ -192,3 +192,11 @@ CF Access Client ID 和 Client Secret 由管理员提供。
 ```bash
 j2c setup --pat <token>
 ```
+
+## 更新日志
+
+查看 [CHANGELOG.md](./CHANGELOG.md) 了解版本更新历史。
+
+## 当前版本
+
+v1.2.2 - 修复 assign 命令在 Jira Server 版本的兼容性问题

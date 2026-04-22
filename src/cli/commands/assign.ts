@@ -15,7 +15,7 @@ export const assignCommand = new Command('assign')
       await client.assignIssue(issueId, username);
       console.log(`Assigned ${issueId} to ${username}`);
     } catch (err: any) {
-      console.error(`Error: ${err.message}`);
+      console.error(`Error: ${err?.message || err}`);
       process.exit(1);
     }
   });
