@@ -210,9 +210,6 @@ j2c setup --pat <token>
 
 ## 当前版本
 
-<<<<<<< Updated upstream
-v1.2.2 - 修复 assign 命令在 Jira Server 版本的兼容性问题
-=======
 详见 [Releases](https://github.com/fightmonster/j2c/releases) 了解最新发布版本。
 
 ## 源码
@@ -222,4 +219,3 @@ v1.2.2 - 修复 assign 命令在 Jira Server 版本的兼容性问题
 ## 文档
 
 完整文档请查看 [Releases](https://github.com/fightmonster/j2c/releases) 中的对应版本。
->>>>>>> Stashed changes
