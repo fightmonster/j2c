@@ -13,7 +13,8 @@ npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira
 ### 安装指定版本
 
 ```bash
-npm install -g https://github.com/fightmonster/j2c/releases/download/v1.2.2/jira2claw-cli-1.2.2.tgz
+# 下载指定版本的 tgz 后本地安装
+# npm install -g ./jira2claw-cli-<version>.tgz
 ```
 
 ## 使用
