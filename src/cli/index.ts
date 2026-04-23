@@ -272,6 +272,10 @@ function printLogo(out: NodeJS.WriteStream = process.stderr): void {
   }
 }
 
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pkg = require('../../package.json');
+
 const colorHelp = new ColorHelp();
 const helpConfig = {
   styleTitle: colorHelp.styleTitle.bind(colorHelp),
@@ -292,7 +296,7 @@ program
   .description(`Jira CLI tool for openclaw skill integration
 
 文档: docs/jira2claw-cli.md`)
-  .version('1.2.2')
+  .version(pkg.version)
   .action(async () => {
     printLogo();
     await showStatus();
