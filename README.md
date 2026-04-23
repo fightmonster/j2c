@@ -6,13 +6,20 @@ Jira 命令行工具，支持 Cloudflare Access 认证。
 
 ## 安装
 
-```bash
-# 从 GitHub Releases 最新版本安装 (推荐)
-npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli.tgz
+### 安装最新版本（推荐）
 
-# 或者下载指定版本的 tgz 后本地安装
+```bash
+npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli.tgz
+```
+
+### 安装指定版本
+
+```bash
+# 下载指定版本的 tgz 后本地安装
 # npm install -g ./jira2claw-cli-<version>.tgz
 ```
+
+## 使用
 
 安装后全局可用 `jira2claw` 和 `j2c` 命令。
 
@@ -203,4 +210,16 @@ j2c setup --pat <token>
 
 ## 当前版本
 
+<<<<<<< Updated upstream
 v1.2.2 - 修复 assign 命令在 Jira Server 版本的兼容性问题
+=======
+详见 [Releases](https://github.com/fightmonster/j2c/releases) 了解最新发布版本。
+
+## 源码
+
+源码仓库：https://github.com/fightmonster/j2c-src
+
+## 文档
+
+完整文档请查看 [Releases](https://github.com/fightmonster/j2c/releases) 中的对应版本。
+>>>>>>> Stashed changes
