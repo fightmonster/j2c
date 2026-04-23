@@ -97,7 +97,7 @@ export const commentCommand = new Command('comment')
       }
 
       // 第二步：构建评论内容
-      let body: string;
+      let body = '';
       if (options.adf) {
         try {
           const adf = JSON.parse(options.adf);
@@ -114,8 +114,8 @@ export const commentCommand = new Command('comment')
         for (const img of localImages) {
           // markdownToWikiMarkup 转换后的 wiki markup 格式
           // 例如: ![截图](test/xxx.png) → !test/xxx.png|alt=截图!
-          const wikiMarkupRef = `!${img.relativePath}|alt=${img.alt}!`;
-          const uploadedRef = `!${issueId}^${img.uploadedFilename}|thumbnail!`;
+          const wikiMarkupRef = img.alt ? `!${img.relativePath}|alt=${img.alt}!` : `!${img.relativePath}!`;
+          const uploadedRef = `!${img.uploadedFilename}|thumbnail!`;
           body = body.replace(wikiMarkupRef, uploadedRef);
         }
       } else {
@@ -136,7 +136,7 @@ export const commentCommand = new Command('comment')
 
         // 如果是图片，插入缩略图引用
         if (isImagePath(options.attach)) {
-          const imageRef = `!${issueId}^${result.uploadedFilename}|thumbnail!`;
+          const imageRef = `!${result.uploadedFilename}|thumbnail!`;
           // 如果 body 有内容，先加换行
           body = body ? `${body}\n\n${imageRef}` : imageRef;
         }

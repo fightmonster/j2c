@@ -38,11 +38,22 @@ export function parseWikiMarkupTable(lines: string[]): {
 
   // 解析对齐行（第二行）
   const alignLine = lines[startIdx + 1]?.trim() || '';
-  const alignments = parseAlignment(alignLine, headers.length);
+  let alignments: ('left' | 'center' | 'right')[] = [];
+  
+  // Jira WikiMarkup 可能没有专门的对齐行（特别是带有 || 表头的）
+  // 检查第二行是否是对齐行
+  let dataStartIndex = startIdx + 1;
+  if (alignLine.includes('---')) {
+    alignments = parseAlignment(alignLine, headers.length);
+    dataStartIndex = startIdx + 2;
+  } else {
+    // 默认左对齐
+    alignments = Array(headers.length).fill('left');
+  }
 
   // 解析数据行
   const rows: string[][] = [];
-  for (let i = startIdx + 2; i < lines.length; i++) {
+  for (let i = dataStartIndex; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!isTableRow(line)) break;
     rows.push(parseTableRow(line));
@@ -55,20 +66,37 @@ export function parseWikiMarkupTable(lines: string[]): {
  * 解析表格行
  */
 function parseTableRow(line: string): string[] {
-  // 移除首尾的 |
-  const content = line.slice(1, -1);
-  // 按 | 分割，但保留转义的 \|
+  // 移除首尾的 | 或 ||
+  let content = line.trim();
+  if (content.startsWith('||')) {
+    content = content.slice(2);
+  } else if (content.startsWith('|')) {
+    content = content.slice(1);
+  }
+  
+  if (content.endsWith('||')) {
+    content = content.slice(0, -2);
+  } else if (content.endsWith('|')) {
+    content = content.slice(0, -1);
+  }
+
+  // 按 | 或 || 分割，但保留转义的 \|
   const cells: string[] = [];
   let current = '';
   let escaped = false;
   
-  for (const char of content) {
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
     if (escaped) {
       current += char;
       escaped = false;
     } else if (char === '\\') {
       escaped = true;
     } else if (char === '|') {
+      // 检查是否是 ||
+      if (i + 1 < content.length && content[i + 1] === '|') {
+        i++; // 跳过第二个 |
+      }
       cells.push(current.trim());
       current = '';
     } else {
