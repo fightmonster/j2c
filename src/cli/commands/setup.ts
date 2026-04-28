@@ -9,12 +9,11 @@ import * as readline from 'readline';
 import {
   savePAT,
   getPAT,
-  saveCFServiceToken,
-  getCFClientId,
-  getCFClientSecret,
-  hasCFServiceToken,
+  writeConfig,
+  getConfig,
 } from '../../client/config.js';
 import { createJiraClient } from '../../client/jira-client.js';
+import { loginKeycloak } from '../../client/keycloak.js';
 
 function prompt(question: string): Promise<string> {
   return new Promise((resolve) => {
@@ -51,124 +50,88 @@ function confirm(question: string, defaultYes: boolean = false): Promise<boolean
 }
 
 export const setupCommand = new Command('setup')
-  .description('设置认证（CF Service Token + API Token）')
-  .option('--pat <token>', 'Personal Access Token')
-  .option('--cf-client-id <id>', 'CF Access Client ID')
-  .option('--cf-client-secret <secret>', 'CF Access Client Secret')
-  .action(async (options: { pat?: string; cfClientId?: string; cfClientSecret?: string }) => {
+  .description('设置认证（Keycloak + API Token）')
+  .option('--kc-username <username>', 'Keycloak Username (通常是邮箱)')
+  .option('--kc-password <password>', 'Keycloak Password')
+  .option('--pat <token>', 'Jira Personal Access Token')
+  .option('--oauth-secret <secret>', 'OAuth2 Client Secret')
+  .action(async (options: { pat?: string; kcUsername?: string; kcPassword?: string; oauthSecret?: string }) => {
     try {
-      // 非交互模式：通过参数直接配置
-      if (options.pat || options.cfClientId || options.cfClientSecret) {
-        if (options.cfClientId && options.cfClientSecret) {
-          saveCFServiceToken(options.cfClientId, options.cfClientSecret);
-          console.log('CF Service Token saved.');
-        } else if (options.cfClientId || options.cfClientSecret) {
-          console.error('Error: --cf-client-id 和 --cf-client-secret 必须同时提供');
-          process.exit(1);
-        }
-        if (options.pat) {
-          savePAT(options.pat);
-          console.log('PAT saved.');
-        }
+      const config = getConfig();
 
-        // 验证连接
-        console.log('Verifying connection...');
-        try {
-          const client = createJiraClient();
-          const user = await client.getMyself();
-          console.log(`Connected as: ${user.displayName} (${user.emailAddress || user.name})`);
-        } catch (err: any) {
-          console.error(`Verification failed: ${err.message}`);
-        }
+      // 交互模式（如果没有提供任何参数）
+      if (!options.pat && !options.kcUsername && !options.kcPassword) {
+        console.log(Chalk.bold('\n=== 配置 Jira CLI 双层认证 ===\n'));
 
-        const { showStatus, clearVerifyCache } = await import('../index.js');
-        clearVerifyCache();
-        await showStatus();
-        return;
-      }
-
-      // 交互模式
-      // 1. CF Service Token
-      const existingClientId = getCFClientId();
-      const existingClientSecret = getCFClientSecret();
-
-      if (existingClientId && existingClientSecret) {
-        console.log(`\nCF Service Token: ${Chalk.gray('configured')}`);
-        const change = await confirm('Change CF Service Token?', false);
-        if (change) {
-          const clientId = await prompt('Enter CF Access Client ID: ');
-          const clientSecret = await prompt('Enter CF Access Client Secret: ');
-          if (clientId && clientSecret) {
-            saveCFServiceToken(clientId, clientSecret);
-            console.log('CF Service Token updated.');
-          }
-        }
-      } else {
-        console.log('\nCF Service Token not configured.');
-        const clientId = await prompt('Enter CF Access Client ID (press Enter to skip): ');
-        if (clientId) {
-          const clientSecret = await prompt('Enter CF Access Client Secret: ');
-          if (clientId && clientSecret) {
-            saveCFServiceToken(clientId, clientSecret);
-            console.log('CF Service Token saved.');
-          }
-        }
-      }
-
-      // 2. PAT
-      const existingPAT = getPAT();
-      let pat: string | null = null;
-
-      if (existingPAT) {
-        const keep = await confirm('PAT already configured. Keep existing?', true);
-        if (!keep) {
-          pat = await prompt('Enter new PAT (press Enter to skip): ');
-          if (pat) {
-            savePAT(pat);
-            console.log('PAT updated.');
+        // 1. PAT
+        const existingPAT = getPAT();
+        let pat = options.pat;
+        if (!pat) {
+          if (existingPAT) {
+            const keep = await confirm('PAT already configured. Keep existing?', true);
+            if (!keep) pat = await prompt('Enter new PAT (press Enter to skip): ');
           } else {
-            console.log('Keeping existing PAT.');
+            console.log(Chalk.cyan('\n[1/4] Jira Personal Access Token (PAT)'));
+            console.log(`How to get: Visit https://www.rxpim.com/secure/ViewProfile.jspa -> Security -> API tokens`);
+            pat = await prompt('Enter PAT: ');
           }
+        }
+        if (pat) savePAT(pat);
+
+        // 2. Keycloak Username
+        console.log(Chalk.cyan('\n[2/4] Keycloak Username'));
+        const kcUsername = await prompt(`Enter Keycloak Username ${config.keycloakUsername ? `(${config.keycloakUsername})` : ''}: `);
+        if (kcUsername) writeConfig({ keycloakUsername: kcUsername });
+        else if (!config.keycloakUsername) throw new Error('Username is required');
+
+        // 3. Keycloak Password
+        console.log(Chalk.cyan('\n[3/4] Keycloak Password'));
+        const kcPassword = await prompt(`Enter Keycloak Password ${config.keycloakPassword ? '(已配置，按回车保留)' : ''}: `);
+        if (kcPassword) writeConfig({ keycloakPassword: kcPassword });
+        else if (!config.keycloakPassword) throw new Error('Password is required');
+
+        // 4. OAuth2 Client Secret
+          console.log(Chalk.cyan('\n[4/4] OAuth2 Client Secret'));
+          const oauthSecret = await prompt(`Enter OAuth2 Client Secret ${config.oauth2ClientSecret ? '(已配置，按回车保留)' : ''}: `);
+          if (oauthSecret) writeConfig({ oauth2ClientSecret: oauthSecret });
+          else if (!config.oauth2ClientSecret) throw new Error('OAuth2 Client Secret is required');
+
         } else {
-          console.log('Keeping existing PAT.');
+          // 命令行参数模式
+          if (options.pat) savePAT(options.pat);
+          if (options.kcUsername) writeConfig({ keycloakUsername: options.kcUsername });
+          if (options.kcPassword) writeConfig({ keycloakPassword: options.kcPassword });
+          if (options.oauthSecret) writeConfig({ oauth2ClientSecret: options.oauthSecret });
         }
-      } else {
-        pat = await prompt('Enter PAT: ');
-        if (pat) {
-          savePAT(pat);
-          console.log('PAT saved.');
-        }
+
+      // 5. 验证连接
+      console.log('\nVerifying Keycloak login...');
+      try {
+        await loginKeycloak();
+        console.log(Chalk.green('✓ Keycloak login successful!'));
+      } catch (err: any) {
+        console.error(Chalk.red(`\n✗ Keycloak login failed: ${err.message}`));
+        process.exit(1);
       }
 
-      if (!pat && !existingPAT) {
-        console.log(`
-${Chalk.bold('How to get JIRA API Token:')}
-
-1. Visit https://www.rxpim.com/secure/ViewProfile.jspa
-2. Click ${Chalk.cyan('Security')} → ${Chalk.cyan('API tokens')}
-3. Click ${Chalk.green('Create API token')}
-`);
-        return;
-      }
-
-      // 3. 验证连接
-      console.log('\nVerifying connection...');
+      console.log('Verifying Jira connection...');
       try {
         const client = createJiraClient();
         const user = await client.getMyself();
-        console.log(`Connected as: ${user.displayName} (${user.emailAddress || user.name})`);
+        console.log(Chalk.green(`✓ Connected to Jira as: ${user.displayName} (${user.emailAddress || user.name})`));
       } catch (err: any) {
-        console.error(`Verification failed: ${err.message}`);
-        console.error('Please check your PAT and CF Service Token configuration.');
-        return;
+        console.error(Chalk.red(`\n✗ Jira connection failed: ${err.message}`));
+        console.error('Please check your PAT configuration.');
+        process.exit(1);
       }
 
-      // 4. 打印状态
+      // 6. 打印状态
       console.log('');
-      const { showStatus } = await import('../index.js');
+      const { showStatus, clearVerifyCache } = await import('../index.js');
+      clearVerifyCache();
       await showStatus();
     } catch (err: any) {
-      console.error(`Error: ${err.message}`);
+      console.error(Chalk.red(`\nError: ${err.message}`));
       process.exit(1);
     }
   });

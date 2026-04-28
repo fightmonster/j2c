@@ -14,15 +14,29 @@ export const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 export interface CLIConfig {
   jiraHost: string;
   pat: string | null;
-  cfClientId: string | null;
-  cfClientSecret: string | null;
+  keycloakUrl: string;
+  keycloakRealm: string;
+  keycloakClientId: string;
+  keycloakUsername: string | null;
+  keycloakPassword: string | null;
+  oauth2ClientSecret: string | null;
+  kcAccessToken: string | null;
+  kcRefreshToken: string | null;
+  kcExpiresAt: number | null;
 }
 
 const DEFAULT_CONFIG: CLIConfig = {
-  jiraHost: 'https://www.rxpim.com',
+  jiraHost: 'https://jira.rxpim.com',
   pat: null,
-  cfClientId: null,
-  cfClientSecret: null,
+  keycloakUrl: 'https://auth.rxpim.com',
+  keycloakRealm: 'jira',
+  keycloakClientId: 'jira-client',
+  keycloakUsername: null,
+  keycloakPassword: null,
+  oauth2ClientSecret: null,
+  kcAccessToken: null,
+  kcRefreshToken: null,
+  kcExpiresAt: null,
 };
 
 /**
@@ -43,17 +57,25 @@ function readConfig(): CLIConfig {
 /**
  * 写入配置文件（自动清理废弃字段）
  */
-function writeConfig(config: CLIConfig): void {
-  // 确保目录存在
+export function writeConfig(config: Partial<CLIConfig>): void {
   if (!fs.existsSync(CONFIG_DIR)) {
     fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
   }
-  // 只保留 CLIConfig 定义的键，自动删除 cfCookie 等废弃字段
+  const current = readConfig();
+  const merged = { ...current, ...config };
+  
   const clean: CLIConfig = {
-    jiraHost: config.jiraHost,
-    pat: config.pat,
-    cfClientId: config.cfClientId,
-    cfClientSecret: config.cfClientSecret,
+    jiraHost: merged.jiraHost,
+    pat: merged.pat,
+    keycloakUrl: merged.keycloakUrl,
+    keycloakRealm: merged.keycloakRealm,
+    keycloakClientId: merged.keycloakClientId,
+    keycloakUsername: merged.keycloakUsername,
+    keycloakPassword: merged.keycloakPassword,
+    oauth2ClientSecret: merged.oauth2ClientSecret,
+    kcAccessToken: merged.kcAccessToken,
+    kcRefreshToken: merged.kcRefreshToken,
+    kcExpiresAt: merged.kcExpiresAt,
   };
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(clean, null, 2), { encoding: 'utf-8', mode: 0o600 });
 }
@@ -66,7 +88,11 @@ export function getJiraHost(): string {
   if (process.env.JIRA_HOST) return process.env.JIRA_HOST;
 
   const config = readConfig();
-  return config.jiraHost || DEFAULT_CONFIG.jiraHost;
+  // 强制使用最新的 jiraHost 默认值，忽略旧的 https://www.rxpim.com
+  if (!config.jiraHost || config.jiraHost === 'https://www.rxpim.com') {
+    return DEFAULT_CONFIG.jiraHost;
+  }
+  return config.jiraHost;
 }
 
 /**
@@ -106,10 +132,11 @@ export function savePAT(token: string): void {
 }
 
 /**
- * 检查是否已登录（CF Service Token + PAT 都存在）
+ * 检查是否已登录（具备全部必备认证信息）
  */
 export function isLoggedIn(): boolean {
-  return hasCFServiceToken() && hasPAT();
+  const config = readConfig();
+  return !!config.pat && !!config.keycloakUsername && !!config.keycloakPassword && !!config.oauth2ClientSecret;
 }
 
 /**
@@ -129,36 +156,16 @@ export function clearPAT(): void {
 }
 
 /**
- * 获取 CF Service Token Client ID
+ * 清除所有认证信息
  */
-export function getCFClientId(): string | null {
-  if (process.env.CF_ACCESS_CLIENT_ID) return process.env.CF_ACCESS_CLIENT_ID;
-  const config = readConfig();
-  return config.cfClientId;
-}
-
-/**
- * 获取 CF Service Token Client Secret
- */
-export function getCFClientSecret(): string | null {
-  if (process.env.CF_ACCESS_CLIENT_SECRET) return process.env.CF_ACCESS_CLIENT_SECRET;
-  const config = readConfig();
-  return config.cfClientSecret;
-}
-
-/**
- * 检查是否有 CF Service Token
- */
-export function hasCFServiceToken(): boolean {
-  return getCFClientId() !== null && getCFClientSecret() !== null;
-}
-
-/**
- * 保存 CF Service Token
- */
-export function saveCFServiceToken(clientId: string, clientSecret: string): void {
-  const config = readConfig();
-  config.cfClientId = clientId;
-  config.cfClientSecret = clientSecret;
-  writeConfig(config);
+export function clearAuth(): void {
+  writeConfig({
+    pat: null,
+    keycloakUsername: null,
+    keycloakPassword: null,
+    oauth2ClientSecret: null,
+    kcAccessToken: null,
+    kcRefreshToken: null,
+    kcExpiresAt: null
+  });
 }

@@ -10,7 +10,8 @@ import * as os from 'os';
 import * as stream from 'stream';
 import { Readable } from 'stream';
 import { Version2Client } from 'jira.js';
-import { getPAT, getJiraHost, getCFClientId, getCFClientSecret } from './config.js';
+import { getPAT, getJiraHost, getConfig } from './config.js';
+import { getValidAccessToken } from './keycloak.js';
 import type {
   JiraIssue,
   JiraSearchResult,
@@ -41,7 +42,7 @@ interface HttpResponse<T = any> {
 }
 
 export class JiraClient {
-  private client: Version2Client;
+  private client: Version2Client | null = null;
   private token: string;
   private clientHost: string;
   private parsedUrl: URL;
@@ -50,51 +51,55 @@ export class JiraClient {
     this.token = config.token || this.getToken();
     this.clientHost = config.host;
     this.parsedUrl = new URL(config.host);
-
-    this.client = new Version2Client({
-      host: config.host,
-      authentication: {
-        oauth2: { accessToken: this.token },
-      },
-      baseRequestConfig: {
-        headers: {
-          ...this.getCFHeaders(),
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      },
-    });
   }
 
   private getToken(): string {
     const token = getPAT();
     if (token) return token;
-    throw new Error('No Jira PAT found. Run: jira setup --pat <your_token>');
+    throw new Error('No Jira PAT found. Run: j2c setup');
   }
 
-  private getCFHeaders(): Record<string, string> {
-    const clientId = getCFClientId();
-    const clientSecret = getCFClientSecret();
-    const headers: Record<string, string> = {};
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const kcToken = await getValidAccessToken();
+    const pat = this.getToken();
+    const config = getConfig();
 
-    if (clientId && clientSecret) {
-      headers['CF-Access-Client-Id'] = clientId;
-      headers['CF-Access-Client-Secret'] = clientSecret;
+    return {
+      'Authorization': `Bearer ${kcToken}`, // 用于通过 Nginx / Keycloak 层认证
+      'X-Jira-Auth': `Bearer ${pat}`,       // 用于通过 Jira 层认证
+      'X-Atlassian-Token': 'no-check',
+      'Origin': config.jiraHost,
+      'Referer': config.jiraHost,
+    };
+  }
+
+  private async ensureClient(): Promise<Version2Client> {
+    if (!this.client) {
+      const headers = await this.getAuthHeaders();
+      this.client = new Version2Client({
+        host: this.clientHost,
+        baseRequestConfig: {
+          headers: {
+            ...headers,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        },
+      });
     }
-
-    return headers;
+    return this.client;
   }
 
   /**
    * 通用 HTTP 请求方法
    * 统一处理 headers、timeout、error handling
    */
-  private httpRequest<T = any>(options: HttpRequestOptions): Promise<HttpResponse<T>> {
+  private async httpRequest<T = any>(options: HttpRequestOptions): Promise<HttpResponse<T>> {
     const { method, path: reqPath, body, headers: extraHeaders, timeout = 10000, followRedirects = false, maxRedirects = 5 } = options;
 
+    const authHeaders = await this.getAuthHeaders();
     const reqHeaders: Record<string, string> = {
-      'Authorization': `Bearer ${this.token}`,
-      ...this.getCFHeaders(),
+      ...authHeaders,
       'Accept': 'application/json',
       ...extraHeaders,
     };
@@ -173,8 +178,9 @@ export class JiraClient {
 
   // Issue Operations
   async getIssue(issueIdOrKey: string): Promise<JiraIssue> {
+    const client = await this.ensureClient();
     return this.withRetry(() =>
-      this.client.issues.getIssue({ issueIdOrKey })
+      client.issues.getIssue({ issueIdOrKey })
     ) as Promise<JiraIssue>;
   }
 
@@ -232,9 +238,11 @@ export class JiraClient {
     let startAt = 0;
     let total = Infinity;
 
+    const client = await this.ensureClient();
+
     while (startAt < total) {
       const result = await this.withRetry(() =>
-        this.client.issueSearch.searchForIssuesUsingJql({
+        client.issueSearch.searchForIssuesUsingJql({
           jql,
           startAt,
           maxResults: pageSize,
@@ -260,8 +268,9 @@ export class JiraClient {
     maxResults?: number;
     fields?: string[];
   }): Promise<JiraSearchResult> {
+    const client = await this.ensureClient();
     return this.withRetry(() =>
-      this.client.issueSearch.searchForIssuesUsingJql({
+      client.issueSearch.searchForIssuesUsingJql({
         jql,
         startAt: options?.startAt || 0,
         maxResults: options?.maxResults || 50,
@@ -272,15 +281,17 @@ export class JiraClient {
 
   // Transition Operations
   async getTransitions(issueIdOrKey: string): Promise<JiraTransition[]> {
+    const client = await this.ensureClient();
     const result = await this.withRetry(() =>
-      this.client.issues.getTransitions({ issueIdOrKey })
+      client.issues.getTransitions({ issueIdOrKey })
     ) as { transitions?: JiraTransition[] };
     return result.transitions || [];
   }
 
   async doTransition(issueIdOrKey: string, transitionId: string): Promise<void> {
+    const client = await this.ensureClient();
     await this.withRetry(() =>
-      this.client.issues.doTransition({
+      client.issues.doTransition({
         issueIdOrKey,
         transition: { id: transitionId },
       })
@@ -289,9 +300,10 @@ export class JiraClient {
 
   // Comment Operations
   async addComment(issueIdOrKey: string, body: string | object): Promise<JiraComment> {
+    const client = await this.ensureClient();
     const commentBody = typeof body === 'string' ? body : JSON.stringify(body);
     const result = await this.withRetry(() =>
-      this.client.issueComments.addComment({
+      client.issueComments.addComment({
         issueIdOrKey,
         comment: commentBody,
       })
@@ -300,8 +312,9 @@ export class JiraClient {
   }
 
   async getComments(issueIdOrKey: string): Promise<JiraComment[]> {
+    const client = await this.ensureClient();
     const result = await this.withRetry(() =>
-      this.client.issueComments.getComments({ issueIdOrKey })
+      client.issueComments.getComments({ issueIdOrKey })
     ) as { comments?: JiraComment[] };
     return result.comments || [];
   }
@@ -408,10 +421,11 @@ export class JiraClient {
   /**
    * Stream-based attachment upload - avoids reading entire file into memory
    */
-  private addAttachmentDirect(issueIdOrKey: string, filePath: string, maxRedirects: number = 5): Promise<any> {
+  private async addAttachmentDirect(issueIdOrKey: string, filePath: string, maxRedirects: number = 5): Promise<any> {
     const filename = path.basename(filePath);
     const boundary = `----JiraCLI${Date.now()}`;
     const fileSize = fs.statSync(filePath).size;
+    const authHeaders = await this.getAuthHeaders();
 
     const header = Buffer.from(
       `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: application/octet-stream\r\n\r\n`,
@@ -428,8 +442,7 @@ export class JiraClient {
         path: `/rest/api/2/issue/${encodeURIComponent(issueIdOrKey)}/attachments`,
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.token}`,
-          ...this.getCFHeaders(),
+          ...authHeaders,
           'X-Atlassian-Token': 'no-check',
           'Content-Type': `multipart/form-data; boundary=${boundary}`,
           'Content-Length': totalLength,
@@ -474,12 +487,12 @@ export class JiraClient {
   }
 
   async downloadAttachment(url: string, destPath: string, maxRedirects: number = 5): Promise<void> {
+    const authHeaders = await this.getAuthHeaders();
     return new Promise((resolve, reject) => {
       const file = fs.createWriteStream(destPath);
       const request = https.get(url, {
         headers: {
-          'Authorization': `Bearer ${this.token}`,
-          ...this.getCFHeaders(),
+          ...authHeaders,
         },
       }, (res) => {
         if ((res.statusCode === 301 || res.statusCode === 302) && maxRedirects > 0) {
@@ -512,10 +525,39 @@ export class JiraClient {
     });
   }
 
+  async getAttachmentContent(contentUrl: string): Promise<Buffer> {
+    const parsedUrl = new URL(contentUrl);
+    const authHeaders = await this.getAuthHeaders();
+    
+    return this.withRetry(() => new Promise((resolve, reject) => {
+      const req = https.get(
+        contentUrl,
+        {
+          headers: {
+            ...authHeaders,
+          },
+        },
+        (res) => {
+          if (res.statusCode !== 200) {
+            reject(new Error(`Failed to get attachment: HTTP ${res.statusCode}`));
+            return;
+          }
+
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => resolve(Buffer.concat(chunks)));
+        }
+      );
+
+      req.on('error', reject);
+    }));
+  }
+
   // User
   async getMyself(): Promise<JiraUser> {
+    const client = await this.ensureClient();
     return this.withRetry(() =>
-      this.client.myself.getCurrentUser()
+      client.myself.getCurrentUser()
     ) as Promise<JiraUser>;
   }
 

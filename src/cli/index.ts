@@ -27,7 +27,7 @@ import { listCommentsCommand } from './commands/list-comments.js';
 import { editCommentCommand } from './commands/edit-comment.js';
 import { deleteCommentCommand } from './commands/delete-comment.js';
 import { projectsCommand } from './commands/projects.js';
-import { hasPAT, hasCFServiceToken, getJiraHost } from '../client/config.js';
+import { getPAT, getJiraHost, isLoggedIn, getConfig } from '../client/config.js';
 import { createJiraClient } from '../client/jira-client.js';
 
 // 非 TTY 终端禁用所有彩色输出
@@ -56,7 +56,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * 登录验证缓存 — 5 分钟内不重复验证
  */
 const VERIFY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-let verifyCache: { ok: boolean; user?: string; reason?: any; message?: string; ts: number } | null = null;
+let verifyCache: {
+  ok: boolean;
+  user?: string;
+  reason?: 'kc_token_invalid' | 'pat_invalid' | 'network_error';
+  message?: string;
+  ts: number;
+} | null = null;
 
 /**
  * 清除登录验证缓存（setup 后调用，确保使用新凭证）
@@ -68,47 +74,36 @@ export function clearVerifyCache(): void {
 /**
  * 验证登录状态
  */
-async function verifyLogin(): Promise<{
+export async function verifyLogin(): Promise<{
   ok: boolean;
   user?: string;
-  reason?: 'cf_token_invalid' | 'pat_invalid' | 'network_error';
+  reason?: 'kc_token_invalid' | 'pat_invalid' | 'network_error';
   message?: string;
 }> {
-  // 使用缓存
-  if (verifyCache && (Date.now() - verifyCache.ts) < VERIFY_CACHE_TTL) {
-    return { ok: verifyCache.ok, user: verifyCache.user, reason: verifyCache.reason, message: verifyCache.message };
+  if (verifyCache && Date.now() - verifyCache.ts < VERIFY_CACHE_TTL) {
+    const { ts, ...result } = verifyCache;
+    return result as { ok: boolean; user?: string; reason?: 'kc_token_invalid' | 'pat_invalid' | 'network_error'; message?: string };
   }
 
-  if (!hasPAT() || !hasCFServiceToken()) {
+  if (!isLoggedIn()) {
     return { ok: false };
   }
 
   try {
     const client = createJiraClient();
-    const result = await client.checkConnection();
-    if (!result.ok) {
-      verifyCache = { ...result, ts: Date.now() };
-      return result;
-    }
-    try {
-      const user = await client.getMyself();
-      const cached = { ok: true, user: user.displayName || user.name, ts: Date.now() };
-      verifyCache = cached;
-      return cached;
-    } catch {
-      const cached = { ok: true, user: undefined, ts: Date.now() };
-      verifyCache = cached;
-      return cached;
-    }
+    const user = await client.getMyself();
+    const result = { ok: true, user: user.displayName || user.name };
+    verifyCache = { ...result, ts: Date.now() };
+    return result;
   } catch (err: any) {
-    const msg = err.message || '';
-    let result: any;
-    if (msg.includes('CF Authorization') || msg.includes('cloudflare') || msg.includes('CF-Access')) {
-      result = { ok: false, reason: 'cf_token_invalid' };
+    const msg = err?.message || String(err);
+    let result: { ok: boolean; reason?: 'kc_token_invalid' | 'pat_invalid' | 'network_error'; message?: string };
+    if (msg.includes('Keycloak') || msg.includes('keycloak') || msg.includes('403')) {
+      result = { ok: false, reason: 'kc_token_invalid' };
     } else if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('PAT')) {
       result = { ok: false, reason: 'pat_invalid' };
     } else {
-      result = { ok: false, reason: 'network_error', message: err.message };
+      result = { ok: false, reason: 'network_error', message: msg };
     }
     verifyCache = { ...result, ts: Date.now() };
     return result;
@@ -122,7 +117,7 @@ async function checkLoginHook(command: Command) {
   const commandName = command.name();
   if (commandName === 'setup') return;
 
-  if (!hasPAT() || !hasCFServiceToken()) {
+  if (!isLoggedIn()) {
     console.error(`\n${Chalk.red('Error:')} 未登录或登录已过期\n`);
     printSetupHint();
     process.exit(1);
@@ -133,7 +128,7 @@ async function checkLoginHook(command: Command) {
 
   if (!result.ok) {
     const reasonMessages = {
-      cf_token_invalid: 'CF Service Token 无效',
+      kc_token_invalid: 'Keycloak Auth 无效',
       pat_invalid: 'Personal Access Token 无效或已过期',
       network_error: result.message || '网络连接失败',
     };
@@ -150,16 +145,17 @@ async function checkLoginHook(command: Command) {
  * 打印配置提示
  */
 function printSetupHint() {
-  const needCf = !hasCFServiceToken();
-  const needPat = !hasPAT();
+  const config = getConfig();
+  const needKc = !config.keycloakUsername || !config.keycloakPassword;
+  const needPat = !config.pat;
 
-  if (needCf && needPat) {
+  if (needKc && needPat) {
     console.error(`${Chalk.bold('需要配置以下内容:')}\n`);
   }
 
-  if (needCf) {
-    console.error(`${Chalk.bold('1. CF Service Token:')}`);
-    console.error(`   运行: ${Chalk.green('jira2claw setup --cf-client-id <id> --cf-client-secret <secret>')}\n`);
+  if (needKc) {
+    console.error(`${Chalk.bold('1. Keycloak Account:')}`);
+    console.error(`   运行: ${Chalk.green('jira2claw setup --kc-username <username> --kc-password <password>')}\n`);
   }
 
   if (needPat) {
@@ -175,8 +171,8 @@ function printSetupHint() {
 function printConnectionHelp() {
   console.error(`${Chalk.bold('配置可能已过期或无效。请重新配置:')}\n`);
   console.error(`${Chalk.bold('运行')} ${Chalk.green('jira2claw setup')} ${Chalk.bold('重新配置认证信息')}\n`);
-  console.error(`${Chalk.bold('CF Service Token:')}`);
-  console.error(`   ${Chalk.green('jira2claw setup --cf-client-id <id> --cf-client-secret <secret>')}\n`);
+  console.error(`${Chalk.bold('Keycloak Account:')}`);
+  console.error(`   ${Chalk.green('jira2claw setup --kc-username <username> --kc-password <password>')}\n`);
   console.error(`${Chalk.bold('Personal Access Token:')}`);
   console.error(`   ${Chalk.green('jira2claw setup --pat <token>')}\n`);
 }
@@ -187,17 +183,18 @@ function printConnectionHelp() {
 export async function showStatus() {
   const host = getJiraHost();
   const configPath = path.join(os.homedir(), '.jira2claw', 'config.json');
-  const patOk = hasPAT();
-  const cfOk = hasCFServiceToken();
+  const config = getConfig();
+  const patOk = !!config.pat;
+  const kcOk = !!(config.keycloakUsername && config.keycloakPassword && config.oauth2ClientSecret);
   const verifyResult = await verifyLogin();
 
   // 状态显示逻辑
   let statusLine: string;
   if (verifyResult.ok) {
     statusLine = Chalk.green('✓ Connected');
-  } else if (patOk && cfOk) {
+  } else if (patOk && kcOk) {
     const reasonMap = {
-      cf_token_invalid: Chalk.yellow('⚠ CF Service Token 无效'),
+      kc_token_invalid: Chalk.yellow('⚠ Keycloak Auth 无效'),
       pat_invalid: Chalk.yellow('⚠ Personal Access Token 无效'),
       network_error: Chalk.red('✗ 网络错误'),
     };
@@ -217,14 +214,14 @@ ${'─'.repeat(60)}
 ${line('Jira Host', Chalk.green('●') + ' ' + host)}
 ${line('Config', Chalk.green('●') + ' ' + configPath)}
 ${line('Jira PAT', patOk ? Chalk.green('✓ Configured') : Chalk.red('✗ Missing'))}
-${line('CF Service Token', cfOk ? Chalk.green('✓ Configured') : Chalk.red('✗ Missing'))}
+${line('Keycloak Auth', kcOk ? Chalk.green('✓ Configured') : Chalk.red('✗ Missing'))}
 ${line('Status', statusLine)}
 ${line('User', verifyResult.ok ? Chalk.green(`✓ ${verifyResult.user}`) : Chalk.gray('-'))}
 ${'─'.repeat(60)}
 `);
 
   if (!verifyResult.ok) {
-    if (patOk && cfOk) {
+    if (patOk && kcOk) {
       // 凭证已配置但连接失败，提示用户重新 setup
       console.error();
       if (verifyResult.message) {

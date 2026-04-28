@@ -25,22 +25,26 @@ npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira
 
 ## 认证配置
 
-### 非交互模式（推荐自动化场景）
-
-```bash
-j2c setup --pat <token> --cf-client-id <id> --cf-client-secret <secret>
-```
-
-| 参数 | 说明 |
-|------|------|
-| `--pat <token>` | Jira Personal Access Token |
-| `--cf-client-id <id>` | CF Access Client ID |
-| `--cf-client-secret <secret>` | CF Access Client Secret |
+首次使用前，需要配置 Jira Personal Access Token 和 Keycloak 认证信息：
 
 ### 交互模式
 
 ```bash
+# 交互式配置
 j2c setup
+```
+
+你将被提示输入：
+1. **Jira PAT**: Jira 的个人访问令牌。
+2. **Keycloak Username**: Keycloak 用户名（通常是邮箱）。
+3. **Keycloak Password**: Keycloak 密码。
+4. **OAuth2 Client Secret**: OAuth2 Client Secret（必须输入）。
+
+### 非交互模式（推荐自动化场景）
+
+也可以通过命令行参数直接配置：
+```bash
+j2c setup --pat <your_token> --kc-username <your_email> --kc-password <your_password> --oauth-secret <your_secret>
 ```
 
 ### 检查状态
