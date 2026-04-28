@@ -1,6 +1,6 @@
 # Jira CLI
 
-Jira 命令行工具，支持 Cloudflare Access 认证。
+Jira 命令行工具，支持 Keycloak 双层认证。
 
 > GitHub: https://github.com/fightmonster/j2c
 
@@ -190,13 +190,7 @@ j2c batch-transition --jql "project = XOS" -s Done --dry-run
 
 ## 获取认证信息
 
-### CF Service Token
 
-```bash
-j2c setup --cf-client-id <id> --cf-client-secret <secret>
-```
-
-CF Access Client ID 和 Client Secret 由管理员提供。
 
 ### PAT (Personal Access Token)
 
