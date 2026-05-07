@@ -379,20 +379,27 @@ j2c comment <issueId> -m "<content>" [options]
 
 | 选项 | 说明 |
 |------|------|
-| `-m, --message <text>` | 评论内容 (纯文本或 Markdown，需配合 --markdown) |
-| `--markdown` | 内容为 Markdown 格式 |
+| `-m, --message <text>` | 评论内容（自动检测格式：纯文本/Markdown/ADF JSON） |
+| `--markdown` | 强制指定内容为 Markdown 格式 |
 | `--adf <json>` | ADF JSON 格式 (Atlassian Document Format) |
 | `--attach <filePath>` | 附加文件到评论（自动处理中文文件名） |
 
-**Markdown 表格转换说明：**
-- Markdown 表格对齐行（如 `|:---:|--------|------|`）会自动移除，因为 Jira WikiMarkup 不支持
-- 表格标题行和数据行之间的空行会自动清理，确保 Jira 正确渲染
+**自动格式检测：**
+- **ADF JSON**：以 `{` 开头且包含 `"type": "doc"`
+- **Markdown**：包含 Markdown 语法（`#` 标题、`**` 粗体、表格、列表、代码块等）
+- **纯文本**：无特殊格式标记
+
+**Markdown → WikiMarkup 转换：**
+- 符合 Confluence Wiki Markup 9.1 规范（Jira Server 9.12 兼容）
+- 表格对齐行自动移除（WikiMarkup 不支持）
+- `<br>` 转为 `\\`（表格内换行）或 `\n`（普通换行）
 
 **示例:**
 ```bash
-j2c comment XOS-731 -m "这是一个评论"
-j2c comment XOS-731 -m "## 分析结果\n\n1. 问题确认" --markdown
-j2c comment XOS-731 -m "| 列1 | 列2 |\n|---|---|\n| a | b |" --markdown  # 表格自动转换
+j2c comment XOS-731 -m "这是一个评论"                    # 自动识别为纯文本
+j2c comment XOS-731 -m "## 分析结果\n\n**粗体**"        # 自动识别为 Markdown
+j2c comment XOS-731 -m "| 列1 | 列2 |\n|---|---|\n| a | b |"  # 表格自动转换
+j2c comment XOS-731 --adf '{"type":"doc",...}'         # ADF JSON 格式
 ```
 
 ---
@@ -519,14 +526,15 @@ j2c batch-comment [issueIds...] [options]
 | 选项 | 说明 |
 |------|------|
 | `--jql <jql>` | 使用 JQL 查询获取 Issue 列表 |
-| `-m, --message <text>` | 评论内容 |
-| `--markdown` | 内容为 Markdown 格式 |
+| `-m, --message <text>` | 评论内容（自动检测格式：纯文本/Markdown） |
+| `--markdown` | 强制指定内容为 Markdown 格式 |
 | `-y, --yes` | 免确认执行 |
 | `--dry-run` | 预览模式 |
 
 **示例:**
 ```bash
-j2c batch-comment --jql "project = XOS AND status = Done" -m "已处理" --markdown -y
+j2c batch-comment --jql "project = XOS AND status = Done" -m "已处理" -y  # 自动检测
+j2c batch-comment XOS-730 XOS-731 -m "## 分析结果\n\n**粗体**" -y          # Markdown 格式
 ```
 
 ---

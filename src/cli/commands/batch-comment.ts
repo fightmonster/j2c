@@ -5,15 +5,15 @@
 import { Command } from 'commander';
 import Chalk from 'chalk';
 import { createJiraClient } from '../../client/jira-client.js';
-import { markdownToWikiMarkup, textToWikiMarkup } from '../../converter/markdown-to-adf.js';
+import { markdownToWikiMarkup, textToWikiMarkup, detectContentFormat } from '../../converter/markdown-to-adf.js';
 import { confirm } from '../ui-utils.js';
 
 export const batchCommentCommand = new Command('batch-comment')
   .description('批量添加评论到 Issues')
   .argument('[issueIds...]', 'Issue ID 列表')
   .option('--jql <jql>', '使用 JQL 查询获取 Issue 列表')
-  .option('-m, --message <text>', '评论内容')
-  .option('--markdown', '内容为 Markdown 格式')
+  .option('-m, --message <text>', '评论内容 (自动检测格式: 纯文本/Markdown)')
+  .option('--markdown', '强制指定内容为 Markdown 格式')
   .option('-y, --yes', '免确认执行')
   .option('--dry-run', '只显示将执行的操作')
   .option('-c, --concurrency <number>', '并发数', '5')
@@ -70,7 +70,8 @@ export const batchCommentCommand = new Command('batch-comment')
       }
 
       // 构建评论
-      const body = options.markdown
+      const isMarkdown = options.markdown || detectContentFormat(options.message) === 'markdown';
+      const body = isMarkdown
         ? markdownToWikiMarkup(options.message)
         : textToWikiMarkup(options.message);
 

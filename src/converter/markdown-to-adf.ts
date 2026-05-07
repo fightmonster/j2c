@@ -77,8 +77,8 @@ export function markdownToWikiMarkup(input: string): string {
   // 11. 处理有序列表: 1. item → # item (支持缩进)
   result = result.replace(/^(\s*)\d+\. (.+)$/gm, (_m, indent, content) => `${indent}# ${content}`);
 
-  // 12. 处理引用块: > quote → {quote}...{quote}
-  result = result.replace(/^> (.+)$/gm, '{quote}$1{quote}');
+  // 12. 处理引用块: > quote → bq. quote (单行引用，符合 WikiMarkup 规范)
+  result = result.replace(/^> (.+)$/gm, 'bq. $1');
 
   // 13. 处理水平线: --- → ----
   result = result.replace(/^---$/gm, '----');
@@ -102,7 +102,27 @@ export function markdownToWikiMarkup(input: string): string {
   //     匹配: 表格行 + 空行 + 表格行 → 移除中间空行
   result = result.replace(/^(\|.*\|)\n\n(\|.*\|)$/gm, '$1\n$2');
 
-  // 16. 清理多余空行
+  // 16. 将 <br> 转换为 WikiMarkup 换行
+  //     表格单元格内: <br> → \\ (WikiMarkup 换行符)
+  //     连续 <br><br> → \\ \\ (官方规范: 多个换行之间必须用空格分隔)
+  //     \\ 后直接跟非空格字符时需补空格: \\• → \\ •
+  //     非表格区域: <br> → \n (普通换行)
+  result = result.split('\n').map(line => {
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      // 表格行：先替换每个 <br> 为 \\
+      let replaced = line.replace(/<br\s*\/?>/gi, '\\\\');
+      // 确保连续 \\ 之间有空格: \\\\ → \\ \\
+      replaced = replaced.replace(/(\\\\)(\\\\)/g, '$1 $2');
+      // 确保 \\ 后面不是空白时补空格: \\• → \\ •
+      replaced = replaced.replace(/\\\\([^\s\\])/g, '\\\\ $1');
+      return replaced;
+    } else {
+      // 非表格行：使用普通换行
+      return line.replace(/<br\s*\/?>/gi, '\n');
+    }
+  }).join('\n');
+
+  // 17. 清理多余空行
   result = result.replace(/\n{3,}/g, '\n\n');
 
   return result.trim();
@@ -210,4 +230,43 @@ export function adfToText(adf: any): string {
   adf.content.forEach(processNode);
 
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/**
+ * 自动检测内容格式
+ *   - ADF JSON: 以 { 开头且包含 "type": "doc"
+ *   - Markdown: 包含 Markdown 特有语法标记
+ *   - Plain Text: 无特殊格式标记
+ */
+export function detectContentFormat(content: string): 'adf' | 'markdown' | 'text' {
+  const trimmed = content.trim();
+
+  // ADF JSON: 以 { 开头且包含 "type": "doc"
+  if (trimmed.startsWith('{') && /"type"\s*:\s*"doc"/.test(trimmed)) {
+    return 'adf';
+  }
+
+  // Markdown 特有语法标记
+  const markdownPatterns = [
+    /^#{1,6}\s/m,                    // 标题 # ~ ######
+    /\*\*[^*]+\*\*/,                 // 粗体 **text**
+    /```[\s\S]*?```/,                // 代码块 ```
+    /\[[^\]]+\]\([^)]+\)/,           // 链接 [text](url)
+    /^>\s/m,                         // 引用 > quote
+    /^\|.*\|.*\|/m,                  // 表格 | a | b |
+    /^---$/m,                        // 水平线 ---
+    /^[-*]\s/m,                      // 无序列表 - item / * item
+    /^\d+\.\s/m,                     // 有序列表 1. item
+    /!\[[^\]]*\]\([^)]+\)/,          // 图片 ![alt](url)
+    /^```/m,                         // 代码块开始
+    /<br\s*\/?>/i,                   // HTML <br> 标签
+  ];
+
+  for (const pattern of markdownPatterns) {
+    if (pattern.test(trimmed)) {
+      return 'markdown';
+    }
+  }
+
+  return 'text';
 }

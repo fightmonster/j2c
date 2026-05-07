@@ -14,7 +14,7 @@ import { Command } from 'commander';
 import * as path from 'path';
 import * as fs from 'fs';
 import { createJiraClient } from '../../client/jira-client.js';
-import { markdownToWikiMarkup, textToWikiMarkup, adfToText } from '../../converter/markdown-to-adf.js';
+import { markdownToWikiMarkup, textToWikiMarkup, adfToText, detectContentFormat } from '../../converter/markdown-to-adf.js';
 
 // 支持的图片扩展名
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg'];
@@ -35,8 +35,8 @@ function resolveImagePath(ref: string): string | null {
 export const commentCommand = new Command('comment')
   .description('添加评论到 Issue (支持纯文本、Markdown、Wiki Markup)')
   .argument('<issueId>', 'Issue ID 或 Key')
-  .option('-m, --message <text>', '评论内容 (纯文本或 Markdown，需配合 --markdown)')
-  .option('--markdown', '内容为 Markdown 格式')
+  .option('-m, --message <text>', '评论内容 (自动检测格式: 纯文本/Markdown/ADF JSON)')
+  .option('--markdown', '强制指定内容为 Markdown 格式')
   .option('--adf <json>', 'ADF JSON 格式 (Atlassian Document Format)')
   .option('--attach <filePath>', '附加文件到评论（自动处理中文文件名）')
   .action(async (issueId: string, options: {
@@ -53,10 +53,13 @@ export const commentCommand = new Command('comment')
 
       const client = createJiraClient();
 
+      // 自动检测格式（--markdown 强制指定时跳过检测）
+      const isMarkdown = options.markdown || (!options.adf && options.message && detectContentFormat(options.message) === 'markdown');
+
       // 第一步：如果是 Markdown，先提取并上传本地图片
       const localImages: Array<{ originalMarkdown: string; alt: string; relativePath: string; uploadedFilename: string }> = [];
 
-      if (options.markdown && options.message) {
+      if (isMarkdown && options.message) {
         // 匹配 Markdown 图片语法: ![alt](path)
         const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
         let match;
@@ -106,7 +109,7 @@ export const commentCommand = new Command('comment')
           console.error('Error: Invalid ADF JSON format');
           process.exit(1);
         }
-      } else if (options.markdown) {
+      } else if (isMarkdown) {
         // Markdown → Wiki Markup
         body = markdownToWikiMarkup(options.message!);
 
@@ -144,7 +147,8 @@ export const commentCommand = new Command('comment')
 
       // 添加评论
       const result = await client.addComment(issueId, body);
-      console.log(`Comment added to ${issueId}: ${(result as any).id || 'success'}`);
+      const formatLabel = options.adf ? 'ADF' : (isMarkdown ? 'Markdown' : 'text');
+      console.log(`Comment added to ${issueId}: ${(result as any).id || 'success'} (format: ${formatLabel})`);
     } catch (err: any) {
       const errorMsg = err.response?.data?.errorMessages?.join(', ') || err.message || 'Unknown error';
       console.error(`Error: ${errorMsg}`);
