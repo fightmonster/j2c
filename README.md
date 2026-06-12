@@ -25,27 +25,34 @@ npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira
 
 ## 认证配置
 
-首次使用前，需要配置 Jira Personal Access Token 和 Keycloak 认证信息：
+首次使用前，需要配置 Jira Personal Access Token 和 Keycloak 认证信息。由于系统在配置保存后会立即进行连通性测试，**第一次配置时必须一次性提供完整参数**（不支持分步配置）。
 
-### 交互模式
+### 1. 交互模式
 
 ```bash
-# 交互式配置
+# 交互式一次性配齐
 j2c setup
 ```
 
-你将被提示输入：
-1. **Jira PAT**: Jira 的个人访问令牌。
+你将被提示输入以下 4 项：
+1. **Jira PAT**: Jira 的个人访问令牌（Personal Access Token）。
 2. **Keycloak Username**: Keycloak 用户名（通常是邮箱）。
 3. **Keycloak Password**: Keycloak 密码。
-4. **OAuth2 Client Secret**: OAuth2 Client Secret（必须输入）。
+4. **OAuth2 Client Secret**: 用于 Keycloak 认证的客户端密钥。
 
-### 非交互模式（推荐自动化场景）
+### 2. 非交互模式（推荐自动化及 AI 场景）
 
-也可以通过命令行参数直接配置：
+在一条命令行中一次性传入全部参数：
 ```bash
 j2c setup --pat <your_token> --kc-username <your_email> --kc-password <your_password> --oauth-secret <your_secret>
 ```
+
+| 参数 | 说明 |
+|------|------|
+| `--pat <token>` | Jira Personal Access Token（访问 https://www.rxpim.com/secure/ViewProfile.jspa -> Security -> API tokens 创建） |
+| `--kc-username <username>` | Keycloak 用户名（通常是邮箱） |
+| `--kc-password <password>` | Keycloak 密码 |
+| `--oauth-secret <secret>` | OAuth2 Client Secret（用于 Keycloak 双层认证，由系统管理员提供） |
 
 ### 检查状态
 
