@@ -1,6 +1,6 @@
 {
   "name": "jira2claw-cli",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "description": "Jira CLI tool for openclaw skill integration",
   "type": "module",
   "files": [

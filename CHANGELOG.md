@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-06-12
+
+### Changed
+- **命令行提示优化**：将 `j2c` 报错与配置提示的命令行示例整合为单条完整命令，并补充 `oauth2ClientSecret` (`--oauth-secret`) 的配置说明，避免用户或 Agent 分步执行导致验证机制阻断。
+
+## [1.4.1] - 2026-06-09
+
+### Fixed
+- **文档一致性修复**：修正 `setup` 命令非交互模式的过期 Cloudflare 参数说明，更新为现行的 Keycloak 认证及 OAuth 秘钥参数。
+- **文档参数补齐**：补齐 `list-comments` 命令的 `--render` 选项描述。
+- **AI 体验优化**：优化未登录或连接失败状态下的提示信息，在错误退出逻辑中也输出说明文档路径，确保 AI Agent 在任何状态下都能定位到 [docs/jira2claw-cli.md](file:///Users/luojun/workspace/jira-cli/docs/jira2claw-cli.md)。
+
 ## [1.4.0] - 2026-05-07
 
 ### Added

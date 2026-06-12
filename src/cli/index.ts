@@ -145,36 +145,30 @@ async function checkLoginHook(command: Command) {
  * 打印配置提示
  */
 function printSetupHint() {
-  const config = getConfig();
-  const needKc = !config.keycloakUsername || !config.keycloakPassword;
-  const needPat = !config.pat;
-
-  if (needKc && needPat) {
-    console.error(`${Chalk.bold('需要配置以下内容:')}\n`);
-  }
-
-  if (needKc) {
-    console.error(`${Chalk.bold('1. Keycloak Account:')}`);
-    console.error(`   运行: ${Chalk.green('jira2claw setup --kc-username <username> --kc-password <password>')}\n`);
-  }
-
-  if (needPat) {
-    console.error(`${Chalk.bold('2. Personal Access Token (PAT):')}`);
-    console.error(`   运行: ${Chalk.green('jira2claw setup --pat <token>')}`);
-    console.error(`   或访问 ${Chalk.cyan('https://www.rxpim.com/secure/ViewProfile.jspa')} 创建 API Token\n`);
-  }
+  console.error(`\n${Chalk.bold('未配置认证信息。请运行以下命令进行配置：')}\n`);
+  console.error(`${Chalk.bold('方式 1: 交互式一步配齐 (推荐)')}`);
+  console.error(`   运行: ${Chalk.green('jira2claw setup')}\n`);
+  console.error(`${Chalk.bold('方式 2: 命令行参数一次性配齐 (非交互式)')}`);
+  console.error(`   运行: ${Chalk.green('jira2claw setup --pat <token> --kc-username <username> --kc-password <password> --oauth-secret <secret>')}\n`);
+  console.error(`${Chalk.bold('说明:')}`);
+  console.error(`   * Jira PAT (Personal Access Token): 访问 ${Chalk.cyan('https://www.rxpim.com/secure/ViewProfile.jspa')} 创建 API Token`);
+  console.error(`   * OAuth2 Client Secret (oauth-secret): 用于 Keycloak 双层认证，由系统管理员提供\n`);
+  console.error(`  完整说明文档: ${Chalk.green('docs/jira2claw-cli.md')}\n`);
 }
 
 /**
  * 打印连接帮助
  */
 function printConnectionHelp() {
-  console.error(`${Chalk.bold('配置可能已过期或无效。请重新配置:')}\n`);
-  console.error(`${Chalk.bold('运行')} ${Chalk.green('jira2claw setup')} ${Chalk.bold('重新配置认证信息')}\n`);
-  console.error(`${Chalk.bold('Keycloak Account:')}`);
-  console.error(`   ${Chalk.green('jira2claw setup --kc-username <username> --kc-password <password>')}\n`);
-  console.error(`${Chalk.bold('Personal Access Token:')}`);
-  console.error(`   ${Chalk.green('jira2claw setup --pat <token>')}\n`);
+  console.error(`\n${Chalk.bold('配置已过期或无效。请运行以下命令重新配置：')}\n`);
+  console.error(`${Chalk.bold('方式 1: 交互式重新配置 (推荐)')}`);
+  console.error(`   运行: ${Chalk.green('jira2claw setup')}\n`);
+  console.error(`${Chalk.bold('方式 2: 命令行参数重新配置 (非交互式)')}`);
+  console.error(`   运行: ${Chalk.green('jira2claw setup --pat <token> --kc-username <username> --kc-password <password> --oauth-secret <secret>')}\n`);
+  console.error(`${Chalk.bold('说明:')}`);
+  console.error(`   * Jira PAT (Personal Access Token): 访问 ${Chalk.cyan('https://www.rxpim.com/secure/ViewProfile.jspa')} 创建 API Token`);
+  console.error(`   * OAuth2 Client Secret (oauth-secret): 用于 Keycloak 双层认证，由系统管理员提供\n`);
+  console.error(`  完整说明文档: ${Chalk.green('docs/jira2claw-cli.md')}\n`);
 }
 
 /**

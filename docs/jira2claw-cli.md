@@ -21,14 +21,15 @@ j2c <command> [options]
 ### 非交互模式（推荐 openclaw 等自动化场景）
 
 ```bash
-j2c setup --pat <token> --cf-client-id <id> --cf-client-secret <secret>
+j2c setup --pat <token> --kc-username <username> --kc-password <password> --oauth-secret <secret>
 ```
 
 | 参数 | 说明 |
 |------|------|
 | `--pat <token>` | Jira Personal Access Token |
-| `--cf-client-id <id>` | CF Access Client ID |
-| `--cf-client-secret <secret>` | CF Access Client Secret |
+| `--kc-username <username>` | Keycloak Username (通常是邮箱) |
+| `--kc-password <password>` | Keycloak Password |
+| `--oauth-secret <secret>` | OAuth2 Client Secret |
 
 ### 交互模式
 
@@ -237,6 +238,7 @@ j2c list-comments <issueId> [options]
 |------|------|
 | `--last` | 只显示最后一条评论 |
 | `-o, --output <file>` | 输出到文件 (方便编辑后写回) |
+| `--render` | 渲染 WikiMarkup 表格为终端表格 (默认输出原始文本) |
 
 **示例:**
 ```bash
@@ -669,3 +671,4 @@ j2c batch-comment --jql "project = XOS AND status = Done" -m "统一处理" --ma
 | `-j, --jql <query>` | 直接使用 JQL 查询 |
 | `--stats <fields>` | 按字段聚合统计，逗号分隔 |
 | `--top <num>` | stats 模式只显示前 N 名 (默认: 10) |
+| `--render` | 渲染 WikiMarkup 表格为终端表格 |
