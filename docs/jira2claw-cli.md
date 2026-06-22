@@ -43,16 +43,26 @@ j2c setup
 j2c
 ```
 
+### 更新 CLI
+
+```bash
+j2c update [--check]
+```
+
+`update` 查询 `fightmonster/j2c` 的 GitHub 最新 Release。发现高于当前版本的 `jira2claw-cli.tgz` 资产时，默认执行全局更新；`--check` 只显示是否有更新。GitHub 不可达、没有新版本或资产未就绪时，不会修改当前 CLI，也不需要 Jira 认证。
+
 ## 命令分类
 
 | 分类 | 命令 |
 |------|------|
+| 工具 | `update` |
 | 读取 | `read`, `view`, `list`, `fields`, `list-comments`, `me`, `projects` |
 | 更新 | `update-summary`, `update-description`, `fields-update` |
 | 评论 | `comment`, `edit-comment`, `delete-comment` |
-| 状态/分配 | `status`, `assign` |
-| 批量操作 | `batch-transition`, `batch-comment`, `export` |
-| 附件 | `download` |
+| 状态/分配 | `status`, `transitions`, `assign` |
+| 权限/创建发现 | `permissions`, `create-meta`, `create` |
+| 批量操作 | `batch-create`, `batch-transition`, `batch-comment`, `export` |
+| 附件 | `upload`, `download` |
 
 ---
 
@@ -108,10 +118,10 @@ j2c list [options]
 | `-k, --keyword <text>` | 关键词 (模糊匹配) |
 | `-j, --jql <query>` | 直接使用 JQL 查询 |
 | `-c, --count` | 只显示数量，不返回详情 |
-| `-m, --max <num>` | 最大结果数 (0=全量自动分页，默认: 50) |
+| `-m, --max <num>` | 最大结果数（非负整数；0=全量自动分页，默认: 50） |
 | `-e, --export <md\|csv\|table>` | 输出格式 (默认: table) |
 | `--stats <fields>` | 按字段聚合统计，逗号分隔: assignee,project,status,issuetype,priority |
-| `--top <num>` | stats 模式只显示前 N 名 (默认: 10) |
+| `--top <num>` | stats 模式只显示前 N 名（正整数，默认: 10） |
 
 **示例:**
 ```bash
@@ -496,6 +506,37 @@ j2c assign XOS-731 jun.luo
 
 ## 批量操作命令
 
+### j2c batch-create - CSV 批量创建
+
+```bash
+j2c batch-create --csv <path> [options]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--csv <path>` | CSV 文件路径；至少需要 `summary` 列 |
+| `-p, --project <key>` | 默认项目；CSV 的 `project` 列可覆盖 |
+| `-t, --type <name>` | 默认类型；CSV 的 `type` 列可覆盖，默认 `R&D` |
+| `--dry-run` | 校验 CSV 和 Jira 创建元数据，不创建 Issue |
+| `-y, --yes` | 免确认创建 |
+| `--concurrency <count>` | 创建并发数，范围 1-10，默认 3 |
+| `--format <text\|json>` | 创建结果格式，默认 text |
+| `--result-file <path>` | 每个创建批次后写入 JSON 结果，用于恢复部分成功 |
+
+除 `project`、`type`、`summary`、`description`、`priority`、`assignee` 外，CSV 列名必须是目标项目类型可创建的 Jira field ID。写入前会校验全部行；运行中出现部分失败时，使用 `--result-file` 中的已创建 key 处理失败行，不要直接重跑整个 CSV。
+
+**示例:**
+```bash
+# 只校验，不创建
+j2c batch-create --csv issues.csv -p XOS --dry-run
+
+# 实际创建，并输出机器可读结果和恢复文件
+j2c batch-create --csv issues.csv -p XOS -t 'R&D' -y \
+  --format json --result-file .local/batch-create-result.json
+```
+
+---
+
 ### j2c batch-transition - 批量更改状态
 
 ```bash
@@ -581,6 +622,17 @@ j2c export --jql "project = XOS" -f md -o xos.md
 ---
 
 ## 附件命令
+
+### j2c upload - 上传附件
+
+```bash
+j2c upload <issueId> <filePath>
+```
+
+**示例:**
+```bash
+j2c upload XOS-731 ./screenshot.png
+```
 
 ### j2c download - 下载附件
 

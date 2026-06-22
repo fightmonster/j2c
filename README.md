@@ -65,11 +65,17 @@ j2c
 | 命令 | 说明 |
 |------|------|
 | `j2c setup` | 配置认证信息（交互式或命令行参数） |
+| `j2c update [--check]` | 检查 GitHub Release，并自动更新 CLI |
 | `j2c me` | 显示当前用户信息及 issue 统计 |
 | `j2c list [options]` | 搜索/列出 Issues |
 | `j2c view <issueId>` | 查看 Issue 详情（表格格式） |
 | `j2c read <issueId>` | 读取 Issue 输出为 Markdown/JSON |
 | `j2c projects [key]` | 列出所有项目 / 查看项目 issue 统计 |
+| `j2c create [options]` | 创建 Issue |
+| `j2c create-meta [options]` | 查看当前用户可创建的类型和字段 |
+| `j2c batch-create --csv <path>` | 从 CSV 批量创建 Issue |
+| `j2c transitions <issueId>` | 列出可用 transition 的 ID 与状态 |
+| `j2c permissions [options]` | 查看当前用户权限 |
 | `j2c status <issueId> [target]` | 查看或更改 Issue 状态 |
 | `j2c assign <issueId> <user>` | 分配 Issue |
 | `j2c comment <issueId> -m <text>` | 添加评论 |
@@ -86,6 +92,18 @@ j2c
 | `j2c batch-comment [ids...]` | 批量添加评论 |
 
 ## 示例
+
+### 更新 CLI
+
+```bash
+# 检查 GitHub Release；存在更高版本时自动全局更新
+j2c update
+
+# 仅检查版本，不安装
+j2c update --check
+```
+
+`update` 不需要 Jira 认证。GitHub 不可达、没有更高版本或 Release 资产尚未就绪时，命令不会修改当前安装。
 
 ### 日常使用
 
@@ -181,6 +199,58 @@ j2c list-comments XOS-731 --last -o comment.txt
 vim comment.txt
 j2c edit-comment XOS-731 --last --file comment.txt -y
 ```
+
+### 创建 Issue
+
+```bash
+# 创建一个 Task；非交互场景使用 -y
+j2c create -p XOS -t Task -s "CLI created issue" -d "Issue description" -y
+
+# 预览 Jira REST 请求，不创建 Issue
+j2c create -p XOS -t Bug -s "Preview" --field customfield_10001=alpha --dry-run
+
+# 自定义字段的复杂值使用 JSON
+j2c create -p XOS -t Task -s "With select field" \
+  --field 'customfield_10002={"value":"Option A"}' -y
+```
+
+### 创建前发现与 CSV 批量创建
+
+```bash
+# 当前用户在项目中可创建的类型数量与列表
+j2c create-meta -p XOS
+
+# R&D 的可创建字段、必填字段和允许值
+j2c create-meta -p XOS -t 'R&D' --format json
+
+# 先校验 CSV；不会创建任何 Issue
+j2c batch-create --csv issues.csv -p XOS --dry-run
+
+# 校验通过后再创建，并保存每批结果。CSV 只需 summary 列；project/type 可由命令行提供。
+j2c batch-create --csv issues.csv -p XOS -t 'R&D' -y \
+  --format json --result-file .local/batch-create-result.json
+```
+
+CSV 至少需要 `summary` 列。支持的上下文列是 `project`、`type`、`summary`、`description`、`priority`、`assignee`；其余列必须是该项目类型可创建的 Jira field ID，例如 `customfield_10117`。不填写 type 时默认使用 `R&D`。
+
+批量创建会先完成全部 CSV 和 Jira 元数据校验。写入阶段若发生部分失败，`--result-file` 会在每个并发批次完成后保存已创建的 issue key 和失败行；据此处理失败行，避免盲目重跑整个文件。`--format json` 适用于 Agent 解析结果。
+
+### Agent 发现命令
+
+```bash
+# 使用实际 transition ID，避免中英文或自定义状态名称歧义
+j2c transitions XOS-26
+j2c transitions XOS-26 --format json
+j2c status XOS-26 <transition-id>
+
+# 当前用户在项目中的实际权限
+j2c permissions --project XOS
+j2c permissions --project XOS --format json
+```
+
+`permissions` 默认过滤 Jira 同时返回的旧权限别名，例如仅保留 `CREATE_ISSUES`，不再重复输出已废弃的 `CREATE_ISSUE`。
+
+本地 Docker 测试请参阅 [docs/local-jira-docker.md](./docs/local-jira-docker.md)。
 
 ### 批量操作
 
