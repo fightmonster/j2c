@@ -79,8 +79,8 @@ j2c
 | `j2c status <issueId> [target]` | 查看或更改 Issue 状态 |
 | `j2c assign <issueId> <user>` | 分配 Issue |
 | `j2c comment <issueId> -m <text>` | 添加评论 |
-| `j2c list-comments <issueId>` | 列出评论 |
-| `j2c edit-comment <issueId>` | 编辑评论 |
+| `j2c list-comments <issueId>` | 列出评论（默认完整 body，支持 --comment-id / --max-chars） |
+| `j2c edit-comment <issueId>` | 编辑评论（自动 Markdown→WikiMarkup，--fix-format 一键修格式） |
 | `j2c delete-comment <issueId>` | 删除评论 |
 | `j2c fields <issueId>` | 列出 Issue 的自定义字段 |
 | `j2c fields-update <issueId> <f> <v>` | 更新自定义字段 |
@@ -90,6 +90,8 @@ j2c
 | `j2c export --jql <jql>` | 批量导出 Issues（自动分页，全量字段） |
 | `j2c batch-transition [ids...]` | 批量更改状态 |
 | `j2c batch-comment [ids...]` | 批量添加评论 |
+
+> **关于 `-y/--yes`**：所有写操作命令（创建/更新/删除/批量）默认直接执行，无需确认，适配 AI agent 与脚本。`-y` 保留为兼容选项，可省略。
 
 ## 示例
 
@@ -198,6 +200,12 @@ j2c comment XOS-731 -m "## 分析结果\n\n问题已确认" --markdown
 j2c list-comments XOS-731 --last -o comment.txt
 vim comment.txt
 j2c edit-comment XOS-731 --last --file comment.txt -y
+
+# 一键修正某条 Markdown 评论的格式（自动转 WikiMarkup 写回）
+j2c edit-comment XOS-731 13026 --fix-format -y
+
+# 精准查看指定评论的完整内容
+j2c list-comments XOS-731 --comment-id 13026
 ```
 
 ### 创建 Issue
