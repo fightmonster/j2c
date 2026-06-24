@@ -91,8 +91,6 @@ j2c
 | `j2c batch-transition [ids...]` | 批量更改状态 |
 | `j2c batch-comment [ids...]` | 批量添加评论 |
 
-> **关于 `-y/--yes`**：所有写操作命令（创建/更新/删除/批量）默认直接执行，无需确认，适配 AI agent 与脚本。`-y` 保留为兼容选项，可省略。
-
 ## 示例
 
 ### 更新 CLI
@@ -199,10 +197,10 @@ j2c comment XOS-731 -m "## 分析结果\n\n问题已确认" --markdown
 # 读取评论到文件，编辑后写回
 j2c list-comments XOS-731 --last -o comment.txt
 vim comment.txt
-j2c edit-comment XOS-731 --last --file comment.txt -y
+j2c edit-comment XOS-731 --last --file comment.txt
 
 # 一键修正某条 Markdown 评论的格式（自动转 WikiMarkup 写回）
-j2c edit-comment XOS-731 13026 --fix-format -y
+j2c edit-comment XOS-731 13026 --fix-format
 
 # 精准查看指定评论的完整内容
 j2c list-comments XOS-731 --comment-id 13026
@@ -211,15 +209,15 @@ j2c list-comments XOS-731 --comment-id 13026
 ### 创建 Issue
 
 ```bash
-# 创建一个 Task；非交互场景使用 -y
-j2c create -p XOS -t Task -s "CLI created issue" -d "Issue description" -y
+# 创建一个 Task
+j2c create -p XOS -t Task -s "CLI created issue" -d "Issue description"
 
 # 预览 Jira REST 请求，不创建 Issue
 j2c create -p XOS -t Bug -s "Preview" --field customfield_10001=alpha --dry-run
 
 # 自定义字段的复杂值使用 JSON
 j2c create -p XOS -t Task -s "With select field" \
-  --field 'customfield_10002={"value":"Option A"}' -y
+  --field 'customfield_10002={"value":"Option A"}'
 ```
 
 ### 创建前发现与 CSV 批量创建
@@ -235,7 +233,7 @@ j2c create-meta -p XOS -t 'R&D' --format json
 j2c batch-create --csv issues.csv -p XOS --dry-run
 
 # 校验通过后再创建，并保存每批结果。CSV 只需 summary 列；project/type 可由命令行提供。
-j2c batch-create --csv issues.csv -p XOS -t 'R&D' -y \
+j2c batch-create --csv issues.csv -p XOS -t 'R&D' \
   --format json --result-file .local/batch-create-result.json
 ```
 
@@ -264,10 +262,10 @@ j2c permissions --project XOS --format json
 
 ```bash
 # 批量更改状态
-j2c batch-transition --jql "project = XOS AND status = Open" -s Done -y
+j2c batch-transition --jql "project = XOS AND status = Open" -s Done
 
 # 批量添加评论
-j2c batch-comment --jql "project = XOS" -m "统一处理" --markdown -y
+j2c batch-comment --jql "project = XOS" -m "统一处理" --markdown
 
 # 预览模式
 j2c batch-transition --jql "project = XOS" -s Done --dry-run

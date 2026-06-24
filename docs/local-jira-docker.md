@@ -76,7 +76,7 @@ this Jira instance:
 ```bash
 J2C_ENV=docker \
 JIRA_PAT='<local-jira-pat>' \
-node dist/cli/index.js create -p CLI -t Task -s 'Local create test' -y
+node dist/cli/index.js create -p CLI -t Task -s 'Local create test'
 ```
 
 Docker mode permits only `http://127.0.0.1:8080`, `http://localhost:8080`, or

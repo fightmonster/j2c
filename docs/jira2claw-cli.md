@@ -64,8 +64,6 @@ j2c update [--check]
 | 批量操作 | `batch-create`, `batch-transition`, `batch-comment`, `export` |
 | 附件 | `upload`, `download` |
 
-> **关于确认：** 所有写操作（创建/更新/删除/批量）默认直接执行，无需 `-y/--yes`，适配 AI agent 与脚本自动化。`-y/--yes` 保留为兼容选项，传不传都不影响行为。误操作可用对应命令恢复（如 `delete-comment` 删评论、再次 `update-summary` 改回）。
-
 ---
 
 ## 读取类命令
@@ -348,11 +346,10 @@ j2c update-summary <issueId> <summary> [options]
 | 选项 | 说明 |
 |------|------|
 | `-d, --dry-run` | 预览模式，不实际更新 |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 
 **示例:**
 ```bash
-j2c update-summary XOS-731 "新的标题" -y
+j2c update-summary XOS-731 "新的标题"
 j2c update-summary XOS-731 "新标题" --dry-run
 ```
 
@@ -367,11 +364,10 @@ j2c update-description <issueId> <description> [options]
 | 选项 | 说明 |
 |------|------|
 | `-d, --dry-run` | 预览模式，不实际更新 |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 
 **示例:**
 ```bash
-j2c update-description XOS-731 "新的描述内容" -y
+j2c update-description XOS-731 "新的描述内容"
 ```
 
 ---
@@ -439,13 +435,12 @@ j2c edit-comment <issueId> [commentId] [body] [options]
 | `--markdown` | 强制按 Markdown 处理（自动转换为 WikiMarkup） |
 | `--fix-format` | 读取该评论现有内容，自动修正格式后写回 |
 | `-d, --dry-run` | 预览模式，不实际更新 |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 
 **推荐工作流:**
 
 ```bash
 # 一键修正某条 Markdown 评论的格式（最常用）
-j2c edit-comment XOS-731 13026 --fix-format -y
+j2c edit-comment XOS-731 13026 --fix-format
 
 # 先预览转换效果，不实际写回
 j2c edit-comment XOS-731 13026 --fix-format --dry-run
@@ -453,15 +448,15 @@ j2c edit-comment XOS-731 13026 --fix-format --dry-run
 # 从文件读取（Markdown 或 WikiMarkup）写回，自动检测转换
 j2c list-comments XOS-731 --comment-id 13026 -o comment.txt
 vim comment.txt
-j2c edit-comment XOS-731 13026 --file comment.txt -y
+j2c edit-comment XOS-731 13026 --file comment.txt
 ```
 
 **示例:**
 ```bash
-j2c edit-comment XOS-731 13026 "新内容" -y             # 指定 ID 编辑
-j2c edit-comment XOS-731 --last "新内容" -y             # 编辑最后一条
-j2c edit-comment XOS-731 13026 --fix-format -y          # 一键修格式
-j2c edit-comment XOS-731 13026 "## 标题" --markdown -y  # 强制按 Markdown 转换写回
+j2c edit-comment XOS-731 13026 "新内容"             # 指定 ID 编辑
+j2c edit-comment XOS-731 --last "新内容"             # 编辑最后一条
+j2c edit-comment XOS-731 13026 --fix-format          # 一键修格式
+j2c edit-comment XOS-731 13026 "## 标题" --markdown  # 强制按 Markdown 转换写回
 ```
 
 ---
@@ -475,12 +470,11 @@ j2c delete-comment <issueId> [commentId] [options]
 | 选项 | 说明 |
 |------|------|
 | `--last` | 删除最后一条评论 |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 
 **示例:**
 ```bash
-j2c delete-comment XOS-731 13026 -y           # 删除指定评论
-j2c delete-comment XOS-731 --last -y          # 删除最后一条评论
+j2c delete-comment XOS-731 13026           # 删除指定评论
+j2c delete-comment XOS-731 --last          # 删除最后一条评论
 ```
 
 ---
@@ -533,7 +527,6 @@ j2c batch-create --csv <path> [options]
 | `-p, --project <key>` | 默认项目；CSV 的 `project` 列可覆盖 |
 | `-t, --type <name>` | 默认类型；CSV 的 `type` 列可覆盖，默认 `R&D` |
 | `--dry-run` | 校验 CSV 和 Jira 创建元数据，不创建 Issue |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 | `--concurrency <count>` | 创建并发数，范围 1-10，默认 3 |
 | `--format <text\|json>` | 创建结果格式，默认 text |
 | `--result-file <path>` | 每个创建批次后写入 JSON 结果，用于恢复部分成功 |
@@ -546,7 +539,7 @@ j2c batch-create --csv <path> [options]
 j2c batch-create --csv issues.csv -p XOS --dry-run
 
 # 实际创建，并输出机器可读结果和恢复文件
-j2c batch-create --csv issues.csv -p XOS -t 'R&D' -y \
+j2c batch-create --csv issues.csv -p XOS -t 'R&D' \
   --format json --result-file .local/batch-create-result.json
 ```
 
@@ -562,14 +555,13 @@ j2c batch-transition [issueIds...] [options]
 |------|------|
 | `--jql <jql>` | 使用 JQL 查询获取 Issue 列表 |
 | `-s, --status <status>` | 目标状态 |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 | `--dry-run` | 预览模式 |
 | `-c, --concurrency <num>` | 并发数 (默认: 5) |
 
 **示例:**
 ```bash
-j2c batch-transition XOS-730 XOS-731 -s Done -y
-j2c batch-transition --jql "project = XOS AND status = Open" -s Done -y
+j2c batch-transition XOS-730 XOS-731 -s Done
+j2c batch-transition --jql "project = XOS AND status = Open" -s Done
 j2c batch-transition --jql "project = XOS" -s Done --dry-run
 ```
 
@@ -586,13 +578,12 @@ j2c batch-comment [issueIds...] [options]
 | `--jql <jql>` | 使用 JQL 查询获取 Issue 列表 |
 | `-m, --message <text>` | 评论内容（自动检测格式：纯文本/Markdown） |
 | `--markdown` | 强制指定内容为 Markdown 格式 |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 | `--dry-run` | 预览模式 |
 
 **示例:**
 ```bash
-j2c batch-comment --jql "project = XOS AND status = Done" -m "已处理" -y  # 自动检测
-j2c batch-comment XOS-730 XOS-731 -m "## 分析结果\n\n**粗体**" -y          # Markdown 格式
+j2c batch-comment --jql "project = XOS AND status = Done" -m "已处理"  # 自动检测
+j2c batch-comment XOS-730 XOS-731 -m "## 分析结果\n\n**粗体**"          # Markdown 格式
 ```
 
 ---
@@ -610,7 +601,6 @@ j2c export [options]
 | `-o, --output <file>` | 输出到文件 |
 | `-m, --max <num>` | 最大结果数 (默认: 0，即全量自动分页) |
 | `--all-fields` | 获取所有字段（含不可导航字段），默认只取 navigable 字段 |
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 
 **CSV 全量字段:** 默认导出包含所有 navigable 字段，包括：
 - 标准字段: Key, Type, Summary, Status, Priority, Assignee, Reporter, Created, Updated, Resolution, Labels, Description
@@ -709,16 +699,16 @@ j2c export --jql "project = XOS AND status = Open" -f json -o xos_open.json
 # 读取评论到文件，编辑后写回（完整 WikiMarkup 支持）
 j2c list-comments XOS-731 --last -o comment.txt
 vim comment.txt
-j2c edit-comment XOS-731 --last --file comment.txt -y
+j2c edit-comment XOS-731 --last --file comment.txt
 
 # 添加分析评论
 j2c comment XOS-731 -m "## 分析结果\n\n1. 问题确认\n2. 原因分析" --markdown
 
 # 批量处理
-j2c batch-transition --jql "project = XOS AND status = Open" -s Done -y
+j2c batch-transition --jql "project = XOS AND status = Open" -s Done
 
 # 批量评论
-j2c batch-comment --jql "project = XOS AND status = Done" -m "统一处理" --markdown -y
+j2c batch-comment --jql "project = XOS AND status = Done" -m "统一处理" --markdown
 ```
 
 ---
@@ -727,7 +717,6 @@ j2c batch-comment --jql "project = XOS AND status = Done" -m "统一处理" --ma
 
 | 选项 | 说明 |
 |------|------|
-| `-y, --yes` | 兼容选项（默认免确认，可省略） |
 | `--dry-run` | 预览模式，显示将执行的操作但不实际执行 |
 | `--last` | 操作最后一条（评论相关命令） |
 | `-o, --output <file>` | 输出到文件 |
