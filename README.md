@@ -82,6 +82,13 @@ j2c
 | `j2c list-comments <issueId>` | 列出评论（默认完整 body，支持 --comment-id / --max-chars） |
 | `j2c edit-comment <issueId>` | 编辑评论（自动 Markdown→WikiMarkup，--fix-format 一键修格式） |
 | `j2c delete-comment <issueId>` | 删除评论 |
+| `j2c activity <issueId>` | 读取活动区（全部/注释/工作日志/改动记录） |
+| `j2c worklog <issueId>` | 查看/添加/编辑/删除工作日志 |
+| `j2c changelog <issueId>` | 查看改动记录 |
+| `j2c links <issueId>` | 查看/添加/删除 Issue links |
+| `j2c watch <issueId>` | 关注/取消关注/查看 watchers |
+| `j2c vote <issueId>` | 投票/取消投票/查看 votes |
+| `j2c attachments <issueId>` | 列出/删除附件 |
 | `j2c fields <issueId>` | 列出 Issue 的自定义字段 |
 | `j2c fields-update <issueId> <f> <v>` | 更新自定义字段 |
 | `j2c update-summary <issueId> <text>` | 更新 Summary |
@@ -90,6 +97,30 @@ j2c
 | `j2c export --jql <jql>` | 批量导出 Issues（自动分页，全量字段） |
 | `j2c batch-transition [ids...]` | 批量更改状态 |
 | `j2c batch-comment [ids...]` | 批量添加评论 |
+
+### 中文命令别名
+
+CLI 支持中文命令和常用中文参数别名；英文命令保持兼容。中文别名会映射到同一个英文实现。
+
+Hermes/skill 生成命令时应始终使用英文规范命令和参数，中文别名只作为人工操作和容错入口。Jira 状态、类型、标题、描述、评论等业务值按用户输入或 Jira 页面语言保留中文。
+
+Agent 推荐生成：
+
+```bash
+j2c comment XOS-731 --message "这是一个评论"
+j2c list --project XOS --status "处理中"
+```
+
+人工也可以使用：
+
+```bash
+j2c 评论 XOS-731 --内容 "这是一个评论"
+j2c 备注 XOS-731 --内容 "这是一个备注"
+j2c 列表 --项目 XOS --状态 "处理中"
+j2c 创建 --项目 XOS --标题 "测试标题" --描述 "测试描述"
+j2c 改状态 XOS-731 "完成"
+j2c 活动 XOS-731 --活动类型 changelog
+```
 
 ## 示例
 

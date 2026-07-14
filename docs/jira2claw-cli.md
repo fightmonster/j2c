@@ -16,6 +16,28 @@ npm install -g jira2claw-cli
 j2c <command> [options]
 ```
 
+### 中文别名与 Agent 生成约定
+
+CLI 支持中文命令和常用中文参数别名，方便人工在中文 Jira 环境下直接操作。英文命令保持兼容，中文别名会映射到同一个英文实现。
+
+Hermes/openclaw skill 生成命令时应始终使用英文规范命令和参数，不应生成中文子命令或中文参数名。Jira 状态、类型、标题、描述、评论等业务值按用户输入或 Jira 页面语言保留中文。
+
+Agent 推荐生成：
+
+```bash
+j2c comment XOS-731 --message "这是一个评论"
+j2c list --project XOS --status "处理中"
+j2c status XOS-731 "完成"
+```
+
+人工也可以使用：
+
+```bash
+j2c 评论 XOS-731 --内容 "这是一个评论"
+j2c 列表 --项目 XOS --状态 "处理中"
+j2c 改状态 XOS-731 "完成"
+```
+
 ## 认证配置
 
 ### 非交互模式（推荐 openclaw 等自动化场景）
@@ -56,10 +78,11 @@ j2c update [--check]
 | 分类 | 命令 |
 |------|------|
 | 工具 | `update` |
-| 读取 | `read`, `view`, `list`, `fields`, `list-comments`, `me`, `projects` |
+| 读取 | `read`, `view`, `list`, `fields`, `list-comments`, `activity`, `changelog`, `worklog`, `links`, `attachments`, `me`, `projects` |
 | 更新 | `update-summary`, `update-description`, `fields-update` |
 | 评论 | `comment`, `edit-comment`, `delete-comment` |
 | 状态/分配 | `status`, `transitions`, `assign` |
+| 关注/投票 | `watch`, `vote` |
 | 权限/创建发现 | `permissions`, `create-meta`, `create` |
 | 批量操作 | `batch-create`, `batch-transition`, `batch-comment`, `export` |
 | 附件 | `upload`, `download` |
@@ -475,6 +498,59 @@ j2c delete-comment <issueId> [commentId] [options]
 ```bash
 j2c delete-comment XOS-731 13026           # 删除指定评论
 j2c delete-comment XOS-731 --last          # 删除最后一条评论
+```
+
+---
+
+## 活动/日志/关联命令
+
+### j2c activity - 读取活动区
+
+```bash
+j2c activity <issueId> [--type all|comments|worklog|changelog|activity] [--format text|json]
+```
+
+`all` 会聚合 comments、worklog、changelog 并按时间排序。`activity` 当前作为聚合活动视图处理；Hermes/agent 推荐使用 `--format json`。
+
+### j2c worklog - 工作日志
+
+```bash
+j2c worklog <issueId> --format json
+j2c worklog <issueId> --add --time-spent "1h 30m" --comment "处理问题"
+j2c worklog <issueId> --edit <worklogId> --time-spent "2h" --comment "修正耗时"
+j2c worklog <issueId> --delete <worklogId>
+```
+
+### j2c changelog - 改动记录
+
+```bash
+j2c changelog <issueId> --format json
+```
+
+### j2c links - Issue links
+
+```bash
+j2c links <issueId> --format json
+j2c links <issueId> --add <targetIssueId> --type "Relates"
+j2c links <issueId> --delete <linkId>
+```
+
+### j2c watch / vote - 关注和投票
+
+```bash
+j2c watch <issueId> --format json
+j2c watch <issueId> --add
+j2c watch <issueId> --delete
+j2c vote <issueId> --format json
+j2c vote <issueId> --add
+j2c vote <issueId> --delete
+```
+
+### j2c attachments - 附件列表/删除
+
+```bash
+j2c attachments <issueId> --format json
+j2c attachments <issueId> --delete <attachmentId>
 ```
 
 ---
