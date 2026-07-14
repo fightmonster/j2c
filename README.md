@@ -49,7 +49,7 @@ j2c setup --pat <your_token> --kc-username <your_email> --kc-password <your_pass
 
 | 参数 | 说明 |
 |------|------|
-| `--pat <token>` | Jira Personal Access Token（访问 https://jira.rxpim.com/secure/ViewProfile.jspa -> Security -> API tokens 创建） |
+| `--pat <token>` | Jira Personal Access Token（在你的 Jira 个人资料 -> Security -> API tokens 中创建） |
 | `--kc-username <username>` | Keycloak 用户名（通常是邮箱） |
 | `--kc-password <password>` | Keycloak 密码 |
 | `--oauth-secret <secret>` | OAuth2 Client Secret（用于 Keycloak 双层认证，由系统管理员提供） |
@@ -308,7 +308,7 @@ j2c batch-transition --jql "project = XOS" -s Done --dry-run
 
 ### PAT (Personal Access Token)
 
-1. 访问 https://jira.rxpim.com/secure/ViewProfile.jspa
+1. 访问你的 Jira 个人资料页面
 2. 点击 Security → API tokens
 3. 创建新令牌
 
