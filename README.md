@@ -1,333 +1,80 @@
 # Jira CLI
 
-Jira 命令行工具，支持 Keycloak 双层认证。
+Jira command-line tool for agent/Hermes workflows and manual use.
 
-> GitHub: https://github.com/fightmonster/j2c
+Release package: https://github.com/fightmonster/j2c
 
-## 安装
+Source code: https://github.com/fightmonster/j2c-src
 
-### 安装最新版本（推荐）
+## Install
+
+Install the latest release:
 
 ```bash
 npm install -g https://github.com/fightmonster/j2c/releases/latest/download/jira2claw-cli.tgz
 ```
 
-### 安装指定版本
+The package provides both commands:
 
 ```bash
-# 下载指定版本的 tgz 后本地安装
-# npm install -g ./jira2claw-cli-<version>.tgz
+j2c
+jira2claw
 ```
 
-## 使用
+## Setup
 
-安装后全局可用 `jira2claw` 和 `j2c` 命令。
-
-## 认证配置
-
-首次使用前，需要配置 Jira Personal Access Token 和 Keycloak 认证信息。由于系统在配置保存后会立即进行连通性测试，**第一次配置时必须一次性提供完整参数**（不支持分步配置）。
-
-### 1. 交互模式
+Configure Jira and Keycloak credentials before first use:
 
 ```bash
-# 交互式一次性配齐
 j2c setup
 ```
 
-你将被提示输入以下 4 项：
-1. **Jira PAT**: Jira 的个人访问令牌（Personal Access Token）。
-2. **Keycloak Username**: Keycloak 用户名（通常是邮箱）。
-3. **Keycloak Password**: Keycloak 密码。
-4. **OAuth2 Client Secret**: 用于 Keycloak 认证的客户端密钥。
+Non-interactive setup:
 
-### 2. 非交互模式（推荐自动化及 AI 场景）
-
-在一条命令行中一次性传入全部参数：
 ```bash
-j2c setup --pat <your_token> --kc-username <your_email> --kc-password <your_password> --oauth-secret <your_secret>
+j2c setup --pat <jira_pat> --kc-username <username> --kc-password <password> --oauth-secret <secret>
 ```
 
-| 参数 | 说明 |
-|------|------|
-| `--pat <token>` | Jira Personal Access Token（在你的 Jira 个人资料 -> Security -> API tokens 中创建） |
-| `--kc-username <username>` | Keycloak 用户名（通常是邮箱） |
-| `--kc-password <password>` | Keycloak 密码 |
-| `--oauth-secret <secret>` | OAuth2 Client Secret（用于 Keycloak 双层认证，由系统管理员提供） |
-
-### 检查状态
+Check connection status and show the installed documentation path:
 
 ```bash
 j2c
 ```
 
-## 命令列表
-
-| 命令 | 说明 |
-|------|------|
-| `j2c setup` | 配置认证信息（交互式或命令行参数） |
-| `j2c update [--check]` | 检查 GitHub Release，并自动更新 CLI |
-| `j2c me` | 显示当前用户信息及 issue 统计 |
-| `j2c list [options]` | 搜索/列出 Issues |
-| `j2c view <issueId>` | 查看 Issue 详情（表格格式） |
-| `j2c read <issueId>` | 读取 Issue 输出为 Markdown/JSON |
-| `j2c projects [key]` | 列出所有项目 / 查看项目 issue 统计 |
-| `j2c create [options]` | 创建 Issue |
-| `j2c create-meta [options]` | 查看当前用户可创建的类型和字段 |
-| `j2c batch-create --csv <path>` | 从 CSV 批量创建 Issue |
-| `j2c transitions <issueId>` | 列出可用 transition 的 ID 与状态 |
-| `j2c permissions [options]` | 查看当前用户权限 |
-| `j2c status <issueId> [target]` | 查看或更改 Issue 状态 |
-| `j2c assign <issueId> <user>` | 分配 Issue |
-| `j2c comment <issueId> -m <text>` | 添加评论 |
-| `j2c list-comments <issueId>` | 列出评论（默认完整 body，支持 --comment-id / --max-chars） |
-| `j2c edit-comment <issueId>` | 编辑评论（自动 Markdown→WikiMarkup，--fix-format 一键修格式） |
-| `j2c delete-comment <issueId>` | 删除评论 |
-| `j2c activity <issueId>` | 读取活动区（全部/注释/工作日志/改动记录） |
-| `j2c worklog <issueId>` | 查看/添加/编辑/删除工作日志 |
-| `j2c changelog <issueId>` | 查看改动记录 |
-| `j2c links <issueId>` | 查看/添加/删除 Issue links |
-| `j2c watch <issueId>` | 关注/取消关注/查看 watchers |
-| `j2c vote <issueId>` | 投票/取消投票/查看 votes |
-| `j2c attachments <issueId>` | 列出/删除附件 |
-| `j2c fields <issueId>` | 列出 Issue 的自定义字段 |
-| `j2c fields-update <issueId> <f> <v>` | 更新自定义字段 |
-| `j2c update-summary <issueId> <text>` | 更新 Summary |
-| `j2c update-description <issueId> <text>` | 更新 Description |
-| `j2c download <issueId>` | 下载附件 |
-| `j2c export --jql <jql>` | 批量导出 Issues（自动分页，全量字段） |
-| `j2c batch-transition [ids...]` | 批量更改状态 |
-| `j2c batch-comment [ids...]` | 批量添加评论 |
-
-### 中文命令别名
-
-CLI 支持中文命令和常用中文参数别名；英文命令保持兼容。中文别名会映射到同一个英文实现。
-
-Hermes/skill 生成命令时应始终使用英文规范命令和参数，中文别名只作为人工操作和容错入口。Jira 状态、类型、标题、描述、评论等业务值按用户输入或 Jira 页面语言保留中文。
-
-Agent 推荐生成：
+## Update
 
 ```bash
-j2c comment XOS-731 --message "这是一个评论"
-j2c list --project XOS --status "处理中"
-```
-
-人工也可以使用：
-
-```bash
-j2c 评论 XOS-731 --内容 "这是一个评论"
-j2c 备注 XOS-731 --内容 "这是一个备注"
-j2c 列表 --项目 XOS --状态 "处理中"
-j2c 创建 --项目 XOS --标题 "测试标题" --描述 "测试描述"
-j2c 改状态 XOS-731 "完成"
-j2c 活动 XOS-731 --活动类型 changelog
-```
-
-## 示例
-
-### 更新 CLI
-
-```bash
-# 检查 GitHub Release；存在更高版本时自动全局更新
 j2c update
-
-# 仅检查版本，不安装
 j2c update --check
 ```
 
-`update` 不需要 Jira 认证。GitHub 不可达、没有更高版本或 Release 资产尚未就绪时，命令不会修改当前安装。
+`j2c update` installs from the GitHub Release asset `jira2claw-cli.tgz`.
 
-### 日常使用
+## Documentation
+
+Quick help:
 
 ```bash
-# 查看当前用户信息及项目统计
+j2c --help
+j2c <command> --help
+```
+
+Full documentation is packaged at:
+
+```text
+docs/jira2claw-cli.md
+```
+
+After installation, run `j2c` to print the absolute path to the installed documentation file.
+
+## Examples
+
+```bash
 j2c me
-
-# 列出所有项目
-j2c projects
-
-# 查看项目 issue 统计
-j2c projects XOS
-
-# 搜索我的 Open issues
-j2c list -a me -s Open
-
-# 查看指定 issue
-j2c view XOS-731
-
-# 读取 issue 为 Markdown
-j2c read XOS-731
-
-# 使用 JQL 搜索
-j2c list -j "project = XOS AND status = Open ORDER BY updated DESC"
-
-# 统计数量
-j2c list -p XOS -t Bug --count
-
-# 自定义字段筛选（注意：严格匹配字段名）
-j2c list -j "project = PNX AND \"SoC Req ID\" is not EMPTY" -e table
+j2c list --assignee me --status "开放"
+j2c read XOS-123
+j2c comment XOS-123 --message "分析完成"
+j2c ftp XOS-123 --format json
 ```
 
-> **💡 AI 使用提示：**
-> - **优先使用 JQL 精确筛选**，而不是先导出 JSON 再分析
-> - **严格匹配字段名**：用户说 "SoC Req ID" 就用 `"SoC Req ID"`，不要猜测
-> - **先用 `j2c fields <issueId>` 确认字段名**，再用 JQL 筛选
-
-### 聚合统计（--stats）
-
-```bash
-# 谁的未关闭 issue 最多 top 3
-j2c list -j "statusCategory != Done" --stats assignee --top 3
-
-# 按项目+经办人分组
-j2c list -j "statusCategory != Done" --stats project,assignee --top 10
-
-# 按项目统计
-j2c list -j "status = Open" --stats project
-
-# CSV 格式输出（方便 AI 解析）
-j2c list -j "statusCategory != Done" --stats project,assignee -e csv
-
-# 全量列表（自动分页）
-j2c list -j "project != XOS AND status = Open" -e csv -m 0
-```
-
-### 数据导出
-
-```bash
-# 全量导出项目为 CSV（自动分页，含全部 navigable 字段）
-j2c export --jql "project = XOS" -o xos_all.csv
-
-# 导出 Open 状态 issue 为 JSON
-j2c export --jql "project = XOS AND status = Open" -f json -o xos_open.json
-
-# 导出为 Markdown
-j2c export --jql "project = XOS" -f md -o xos.md
-
-# 限制导出数量
-j2c export --jql "project = XOS" -m 100 -o xos_100.csv
-
-# 包含所有字段（含不可导航字段）
-j2c export --jql "project = XOS" --all-fields -o xos_full.csv
-```
-
-### 状态和评论操作
-
-```bash
-# 更改 issue 状态
-j2c status XOS-731 "In Progress"
-
-# 分配 issue
-j2c assign XOS-731 john.doe
-
-# 添加评论
-j2c comment XOS-731 -m "这是一个评论"
-
-# 添加 Markdown 格式评论
-j2c comment XOS-731 -m "## 分析结果\n\n问题已确认" --markdown
-
-# 读取评论到文件，编辑后写回
-j2c list-comments XOS-731 --last -o comment.txt
-vim comment.txt
-j2c edit-comment XOS-731 --last --file comment.txt
-
-# 一键修正某条 Markdown 评论的格式（自动转 WikiMarkup 写回）
-j2c edit-comment XOS-731 13026 --fix-format
-
-# 精准查看指定评论的完整内容
-j2c list-comments XOS-731 --comment-id 13026
-```
-
-### 创建 Issue
-
-```bash
-# 创建一个 Task
-j2c create -p XOS -t Task -s "CLI created issue" -d "Issue description"
-
-# 预览 Jira REST 请求，不创建 Issue
-j2c create -p XOS -t Bug -s "Preview" --field customfield_10001=alpha --dry-run
-
-# 自定义字段的复杂值使用 JSON
-j2c create -p XOS -t Task -s "With select field" \
-  --field 'customfield_10002={"value":"Option A"}'
-```
-
-### 创建前发现与 CSV 批量创建
-
-```bash
-# 当前用户在项目中可创建的类型数量与列表
-j2c create-meta -p XOS
-
-# R&D 的可创建字段、必填字段和允许值
-j2c create-meta -p XOS -t 'R&D' --format json
-
-# 先校验 CSV；不会创建任何 Issue
-j2c batch-create --csv issues.csv -p XOS --dry-run
-
-# 校验通过后再创建，并保存每批结果。CSV 只需 summary 列；project/type 可由命令行提供。
-j2c batch-create --csv issues.csv -p XOS -t 'R&D' \
-  --format json --result-file .local/batch-create-result.json
-```
-
-CSV 至少需要 `summary` 列。支持的上下文列是 `project`、`type`、`summary`、`description`、`priority`、`assignee`；其余列必须是该项目类型可创建的 Jira field ID，例如 `customfield_10117`。不填写 type 时默认使用 `R&D`。
-
-批量创建会先完成全部 CSV 和 Jira 元数据校验。写入阶段若发生部分失败，`--result-file` 会在每个并发批次完成后保存已创建的 issue key 和失败行；据此处理失败行，避免盲目重跑整个文件。`--format json` 适用于 Agent 解析结果。
-
-### Agent 发现命令
-
-```bash
-# 使用实际 transition ID，避免中英文或自定义状态名称歧义
-j2c transitions XOS-26
-j2c transitions XOS-26 --format json
-j2c status XOS-26 <transition-id>
-
-# 当前用户在项目中的实际权限
-j2c permissions --project XOS
-j2c permissions --project XOS --format json
-```
-
-`permissions` 默认过滤 Jira 同时返回的旧权限别名，例如仅保留 `CREATE_ISSUES`，不再重复输出已废弃的 `CREATE_ISSUE`。
-
-本地 Docker 测试请参阅 [docs/local-jira-docker.md](./docs/local-jira-docker.md)。
-
-### 批量操作
-
-```bash
-# 批量更改状态
-j2c batch-transition --jql "project = XOS AND status = Open" -s Done
-
-# 批量添加评论
-j2c batch-comment --jql "project = XOS" -m "统一处理" --markdown
-
-# 预览模式
-j2c batch-transition --jql "project = XOS" -s Done --dry-run
-```
-
-## 获取认证信息
-
-
-
-### PAT (Personal Access Token)
-
-1. 访问你的 Jira 个人资料页面
-2. 点击 Security → API tokens
-3. 创建新令牌
-
-```bash
-j2c setup --pat <token>
-```
-
-## 更新日志
-
-查看 [CHANGELOG.md](./CHANGELOG.md) 了解版本更新历史。
-
-## 当前版本
-
-详见 [Releases](https://github.com/fightmonster/j2c/releases) 了解最新发布版本。
-
-## 源码
-
-源码仓库：https://github.com/fightmonster/j2c-src
-
-## 文档
-
-完整文档请查看 [Releases](https://github.com/fightmonster/j2c/releases) 中的对应版本。
+Hermes/agent should prefer canonical English commands and options. Chinese command aliases are supported for manual operation.
