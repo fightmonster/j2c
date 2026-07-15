@@ -1,5 +1,7 @@
 # jira2claw CLI 参考
 
+版本：1.6.5
+
 使用 `j2c` (jira2claw) CLI 操作 Jira。
 
 ## 安装
@@ -20,13 +22,14 @@ j2c <command> [options]
 
 CLI 支持中文命令和常用中文参数别名，方便人工在中文 Jira 环境下直接操作。英文命令保持兼容，中文别名会映射到同一个英文实现。
 
-Hermes/openclaw skill 生成命令时应始终使用英文规范命令和参数，不应生成中文子命令或中文参数名。Jira 状态、类型、标题、描述、评论等业务值按用户输入或 Jira 页面语言保留中文。
+Hermes/openclaw skill 生成命令时应始终使用英文规范命令和参数，不应生成中文子命令或中文参数名。Jira 状态、标题、描述、评论等业务值按用户输入或 Jira 页面语言保留中文。`--type` 只表示 Jira Issue Type；用户泛称“bug/问题/单/issue”时不要自动加 `--type Bug`，除非用户明确要求类型为 Bug 或项目元数据确认存在该类型。
 
 Agent 推荐生成：
 
 ```bash
 j2c comment XOS-731 --message "这是一个评论"
 j2c list --project XOS --status "处理中"
+j2c list --assignee me --status "开放"
 j2c status XOS-731 "完成"
 ```
 
@@ -71,14 +74,14 @@ j2c
 j2c update [--check]
 ```
 
-`update` 查询 `fightmonster/j2c` 的 GitHub 最新 Release。发现高于当前版本的 `jira2claw-cli.tgz` 资产时，默认执行全局更新；`--check` 只显示是否有更新。GitHub 不可达、没有新版本或资产未就绪时，不会修改当前 CLI，也不需要 Jira 认证。
+`update` 查询 `fightmonster/j2c` 的 GitHub 最新 Release。发现高于当前版本的 `jira2claw-cli.tgz` 资产时，会优先复用当前 `j2c` 的安装方式；无法判断上次安装方式时，按首次安装策略优先尝试 `npm`，再尝试 `pnpm`、`yarn`。也可以用 `J2C_UPDATE_PACKAGE_MANAGER=pnpm` 强制指定。`--check` 只显示是否有更新。GitHub 不可达、没有新版本或资产未就绪时，不会修改当前 CLI，也不需要 Jira 认证。
 
 ## 命令分类
 
 | 分类 | 命令 |
 |------|------|
 | 工具 | `update` |
-| 读取 | `read`, `view`, `list`, `fields`, `list-comments`, `activity`, `changelog`, `worklog`, `links`, `attachments`, `me`, `projects` |
+| 读取 | `read`, `view`, `list`, `fields`, `list-comments`, `activity`, `changelog`, `worklog`, `links`, `attachments`, `dashboard`, `ftp`, `me`, `projects` |
 | 更新 | `update-summary`, `update-description`, `fields-update` |
 | 评论 | `comment`, `edit-comment`, `delete-comment` |
 | 状态/分配 | `status`, `transitions`, `assign` |
@@ -137,7 +140,7 @@ j2c list [options]
 | `-i, --id <issueId>` | Issue ID |
 | `-a, --assignee <email>` | 经办人 (使用 `me` 表示当前用户) |
 | `-s, --status <status>` | 状态 |
-| `-t, --type <type>` | Issue 类型 (如 SOC, Task, Bug) |
+| `-t, --type <type>` | Jira Issue Type；仅在明确指定类型时使用，不要把泛称 bug/问题/单自动映射为 Bug |
 | `-k, --keyword <text>` | 关键词 (模糊匹配) |
 | `-j, --jql <query>` | 直接使用 JQL 查询 |
 | `-c, --count` | 只显示数量，不返回详情 |
@@ -358,6 +361,85 @@ Project XOS Issue Counts:
 
 ---
 
+### j2c dashboard - 仪表盘
+
+```bash
+j2c dashboard [options]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--id <dashboardId>` | 读取指定 dashboard |
+| `--filter <favourite\|my>` | 过滤 dashboard |
+| `--start-at <number>` | 分页起点 (默认: 0) |
+| `--max-results <number>` | 每页数量 (默认: 50) |
+| `--item <itemId>` | dashboard item id，用于 item property API |
+| `--property <key>` | dashboard item property key |
+| `--value <jsonOrText>` | 设置 item property 值，JSON 会自动解析 |
+| `--value-file <path>` | 从文件读取 item property 值，JSON 会自动解析 |
+| `--delete-property` | 删除 item property |
+| `-f, --format <text\|json>` | 输出格式 (默认: text) |
+
+**示例:**
+```bash
+j2c dashboard --format json
+j2c dashboard --filter my --max-results 20
+j2c dashboard --id 10000
+j2c dashboard --id 10000 --item 20000 --format json
+j2c dashboard --id 10000 --item 20000 --property my.key
+j2c dashboard --id 10000 --item 20000 --property my.key --value '{"enabled":true}'
+j2c dashboard --id 10000 --item 20000 --property my.key --delete-property
+```
+
+Jira Server/Data Center 9.12.10 官方 REST 文档只公开 dashboard 列表、dashboard 详情，以及 dashboard item property 的读取/设置/删除。创建/删除整个仪表盘、添加/删除 gadget 不在该版本公开 REST 文档中，CLI 不提供这些命令，agent 不应生成相关操作。
+
+---
+
+### j2c ftp - FTP 日志探测/下载
+
+```bash
+j2c ftp <ftpUrl|issueKey> [options]
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--download [pattern]` | 下载文件；目录 URL 可用通配符，如 `*.log` |
+| `-d, --dir <directory>` | 下载目录 (默认: `./downloads/ftp`) |
+| `--max-size <size>` | 大文件阈值，超过默认跳过下载 (默认: `100MB`) |
+| `--force` | 即使超过 `--max-size` 也用 j2c 下载 |
+| `--password-env <name>` | 从环境变量读取 FTP 密码，避免命令行明文 |
+| `--secure` | 使用 FTPS |
+| `-f, --format <text\|json>` | 输出格式 (默认: text) |
+
+**示例:**
+```bash
+j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791 --format json
+j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791 --download "*.log" -d ./logs
+j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791/crash.log --download -d ./logs
+J2C_FTP_PASSWORD=secret j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791 --password-env J2C_FTP_PASSWORD
+j2c ftp XOS-791 --format json
+```
+
+目标可以是 `ftp://` URL，也可以是 Jira issue key。传 issue key 时，CLI 会读取 issue 描述和评论，提取所有 `ftp://` 链接，去重后逐个独立处理。JSON 输出中每个链接都会保留来源字段：
+
+- `sourceType: "description"` 表示链接来自 issue 描述。
+- `sourceType: "comment"` 表示链接来自评论，同时返回 `commentId`。
+- `source` 保留兼容字符串，例如 `XOS-791:description` 或 `XOS-791:comment:10201`。
+
+下载结果会嵌套在对应 link 的 `downloads` 数组里，因此多 FTP 链接时可以明确判断每个下载文件来自描述还是哪条评论。
+
+默认只探测和列目录/文件大小，不下载。下载超过阈值的大文件时，CLI 默认跳过并提示使用支持断点续传的工具，例如 `wget -c`、`lftp pget -c` 或 FileZilla；确实要用 Node.js 下载时再加 `--force`。
+
+Hermes/agent 推荐先生成只读探测命令：
+
+```bash
+j2c ftp XOS-791 --format json
+```
+
+只有用户明确要求下载时才使用 `--download`。如果 issue 中有多条 FTP 链接且用户没有明确说“全部下载”，Hermes/agent 应先执行只读探测并向用户汇报每条链接的来源、文件列表和大小；用户确认后再按指定链接或通配符下载。不要把 FTP 密码写进命令行历史，优先使用 `--password-env` 或交互式输入。
+
+---
+
 ## 更新类命令
 
 ### j2c update-summary - 更新 Summary
@@ -418,13 +500,17 @@ j2c comment <issueId> -m "<content>" [options]
 
 | 选项 | 说明 |
 |------|------|
-| `-m, --message <text>` | 评论内容（自动检测格式：纯文本/Markdown/ADF JSON） |
+| `-m, --message <text>` | 评论内容（自动检测格式：纯文本/Markdown/WikiMarkup/ADF JSON） |
 | `--markdown` | 强制指定内容为 Markdown 格式 |
+| `--wiki` | 强制指定内容为 Jira WikiMarkup 格式，原样发送 |
 | `--adf <json>` | ADF JSON 格式 (Atlassian Document Format) |
 | `--attach <filePath>` | 附加文件到评论（自动处理中文文件名） |
+| `--footer` | 可选：agent 自行决定是否在评论末尾追加小尾巴（agent 名字）；默认不加 |
+| `--agent <name>` | 可选：小尾巴中显示的 agent 名字；也可用 `J2C_AGENT_NAME` |
 
 **自动格式检测：**
 - **ADF JSON**：以 `{` 开头且包含 `"type": "doc"`
+- **WikiMarkup**：包含 `h1.`、`{panel}`、`{code}`、`{color}`、`||表头||`、`[^附件]`、`!image|thumbnail!` 等 Jira WikiMarkup 标记时原样发送
 - **Markdown**：包含 Markdown 语法（`#` 标题、`**` 粗体、表格、列表、代码块等）
 - **纯文本**：无特殊格式标记
 
@@ -437,9 +523,13 @@ j2c comment <issueId> -m "<content>" [options]
 ```bash
 j2c comment XOS-731 -m "这是一个评论"                    # 自动识别为纯文本
 j2c comment XOS-731 -m "## 分析结果\n\n**粗体**"        # 自动识别为 Markdown
+j2c comment XOS-731 -m "{panel:title=分析}\n内容\n{panel}" --wiki  # 原样发送 WikiMarkup
+j2c comment XOS-731 -m "分析完成" --footer --agent Hermes # 追加 agent 小尾巴
 j2c comment XOS-731 -m "| 列1 | 列2 |\n|---|---|\n| a | b |"  # 表格自动转换
 j2c comment XOS-731 --adf '{"type":"doc",...}'         # ADF JSON 格式
 ```
+
+`--footer` 是给 Hermes/agent 使用的可选标记，不是必选参数。默认不加小尾巴；agent 可以根据自己的 skill 策略决定是否追加。`--footer` 会在创建评论时一次性追加小尾巴，不会为了写 comment id 再编辑第二次。Jira comment id 仍会在 CLI 输出中返回，删除某条评论不会改变其他评论 id。
 
 ---
 
@@ -456,6 +546,7 @@ j2c edit-comment <issueId> [commentId] [body] [options]
 | `--last` | 编辑最后一条评论 |
 | `-f, --file <path>` | 从文件读取评论内容 |
 | `--markdown` | 强制按 Markdown 处理（自动转换为 WikiMarkup） |
+| `--wiki` | 强制按 Jira WikiMarkup 处理，原样发送 |
 | `--fix-format` | 读取该评论现有内容，自动修正格式后写回 |
 | `-d, --dry-run` | 预览模式，不实际更新 |
 
@@ -652,8 +743,9 @@ j2c batch-comment [issueIds...] [options]
 | 选项 | 说明 |
 |------|------|
 | `--jql <jql>` | 使用 JQL 查询获取 Issue 列表 |
-| `-m, --message <text>` | 评论内容（自动检测格式：纯文本/Markdown） |
+| `-m, --message <text>` | 评论内容（自动检测格式：纯文本/Markdown/WikiMarkup） |
 | `--markdown` | 强制指定内容为 Markdown 格式 |
+| `--wiki` | 强制指定内容为 Jira WikiMarkup 格式，原样发送 |
 | `--dry-run` | 预览模式 |
 
 **示例:**
