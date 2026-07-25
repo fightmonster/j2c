@@ -1,6 +1,6 @@
 # jira2claw CLI 参考
 
-版本：1.6.5
+版本：1.6.6
 
 使用 `j2c` (jira2claw) CLI 操作 Jira。
 
@@ -398,29 +398,36 @@ Jira Server/Data Center 9.12.10 官方 REST 文档只公开 dashboard 列表、d
 ### j2c ftp - FTP 日志探测/下载
 
 ```bash
-j2c ftp <ftpUrl|issueKey> [options]
+j2c ftp [ftpUrl|issueKey] [options]
 ```
 
 | 选项 | 说明 |
 |------|------|
+| `--status` | 读取下载目录中的状态文件，不连接 FTP 服务器 |
 | `--download [pattern]` | 下载文件；目录 URL 可用通配符，如 `*.log` |
 | `-d, --dir <directory>` | 下载目录 (默认: `./downloads/ftp`) |
 | `--max-size <size>` | 大文件阈值，超过默认跳过下载 (默认: `100MB`) |
 | `--force` | 即使超过 `--max-size` 也用 j2c 下载 |
 | `--password-env <name>` | 从环境变量读取 FTP 密码，避免命令行明文 |
-| `--secure` | 使用 FTPS |
+| `--secure` | 使用 FTPS；未指定时可从 `~/.jira2claw/ftp.json` 读取 |
+| `--insecure` | 接受自签名或不受信任的 FTPS 证书 |
+| `--no-resume` | 禁用断点续传；默认保留 `.part` 文件并从已下载位置继续 |
+| `--retries <count>` | 已获取部分数据后传输中断时的自动重连次数 (默认: `2`)；首次连接失败不重试 |
+| `--progress` | 在 stderr 显示实时下载进度 |
 | `-f, --format <text\|json>` | 输出格式 (默认: text) |
 
 **示例:**
 ```bash
-j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791 --format json
-j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791 --download "*.log" -d ./logs
-j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791/crash.log --download -d ./logs
-J2C_FTP_PASSWORD=secret j2c ftp ftp://ftpuser@10.83.3.36/1_XOS/XOS-791 --password-env J2C_FTP_PASSWORD
+j2c ftp ftp://loguser@ftp.example.com/logs/ISSUE-123 --format json
+j2c ftp ftp://loguser@ftp.example.com/logs/ISSUE-123 --download "*.log" -d ./logs
+j2c ftp ftp://loguser@ftp.example.com/logs/ISSUE-123/crash.log --download -d ./logs
+J2C_FTP_PASSWORD=secret j2c ftp ftp://loguser@ftp.example.com/logs/ISSUE-123 --password-env J2C_FTP_PASSWORD
+j2c ftp ftp://ftp.example.com/logs/ISSUE-123/bugreport.zip --download --force --progress
+j2c ftp --status -d ./logs --format json
 j2c ftp XOS-791 --format json
 ```
 
-目标可以是 `ftp://` URL，也可以是 Jira issue key。传 issue key 时，CLI 会读取 issue 描述和评论，提取所有 `ftp://` 链接，去重后逐个独立处理。JSON 输出中每个链接都会保留来源字段：
+目标可以是 `ftp://` 或 `ftps://` URL，也可以是 Jira issue key。传 issue key 时，CLI 会读取 issue 描述和评论，提取所有 FTP 链接，去重后逐个独立处理。JSON 输出中每个链接都会保留来源字段：
 
 - `sourceType: "description"` 表示链接来自 issue 描述。
 - `sourceType: "comment"` 表示链接来自评论，同时返回 `commentId`。
@@ -428,7 +435,30 @@ j2c ftp XOS-791 --format json
 
 下载结果会嵌套在对应 link 的 `downloads` 数组里，因此多 FTP 链接时可以明确判断每个下载文件来自描述还是哪条评论。
 
-默认只探测和列目录/文件大小，不下载。下载超过阈值的大文件时，CLI 默认跳过并提示使用支持断点续传的工具，例如 `wget -c`、`lftp pget -c` 或 FileZilla；确实要用 Node.js 下载时再加 `--force`。
+默认只探测和列目录/文件大小，不下载。下载超过阈值的大文件时，CLI 默认跳过；确实要用 Node.js 下载时加 `--force`。下载始终单线程，同一目标文件会加本地进程锁，避免多个 agent 同时写入。文件先写入 `<文件名>.part`，网络断开会自动重新连接并从现有文件大小继续，远端大小一致后才改名为最终文件。首次连接失败不会自动重试；只有已经取得部分数据的传输中断才会按 3 秒、6 秒的递增间隔重连，避免触发服务端安全机制。失败时 `.part` 会保留，重新执行相同命令也会继续下载。
+
+下载进度与结果会以原子写入的方式保存到下载目录 `.j2c-ftp-status.json`。运行中的 agent 使用 `--progress` 查看实时进度；另一个 agent 或进程可随时执行 `j2c ftp --status -d <下载目录> --format json` 查询，不会连接 FTP 服务器。状态包含 `downloading`、`completed`、`partial` 或 `skipped`，以及已下载字节数、总大小、重试次数、路径和最后错误。
+
+FTP 用户名、密码和默认 FTPS 设置可保存于 `~/.jira2claw/ftp.json`（建议权限为 `0600`，不要提交到版本库）：
+
+```json
+{
+  "default": {
+    "username": "loguser",
+    "password": "replace-with-secret"
+  },
+  "servers": {
+    "ftp.example.com": {
+      "username": "loguser",
+      "password": "replace-with-secret",
+      "protocol": "ftps",
+      "insecure": true
+    }
+  }
+}
+```
+
+匹配优先级为 URL 中的用户名/密码、`--password-env`、服务器专属配置、默认配置。`protocol` 可为 `ftp` 或 `ftps`（也兼容旧的 `secure: true`）；`sftp` 会明确报不支持，避免误用 FTP 客户端。仅在内网自签名证书场景使用 `insecure: true` 或 `--insecure`。命令不会输出密码；传输进度写入 stderr，`--format json` 的 stdout 只输出最终结构化状态，包含 `status`、`downloaded`、`attempts` 和未完成时的 `partialPath`。
 
 Hermes/agent 推荐先生成只读探测命令：
 
